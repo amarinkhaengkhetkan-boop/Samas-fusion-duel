@@ -6,7 +6,7 @@
      · private/A, B    = การ์ดในมือของแต่ละทีม (กฎฐานข้อมูลให้อ่านได้เฉพาะเจ้าของที่นั่ง + โฮสต์)
    - ผู้เล่นส่งคำสั่งเข้า actions/ แล้วโฮสต์เป็นผู้ตรวจและดำเนินการ
    ===================================================================== */
-const APP_VER = '20261113c';
+const APP_VER = '20261113d';
 let AUTH = null, DB = null, USER = null;
 let ROOM = null, ROOM_PW = '', IS_HOST = false, MYSEAT = null, ROOMINFO = null;
 let SEATS = {}, READY = {}, NAMES = {};
@@ -297,7 +297,7 @@ function handleRemote(m){
   switch(d.a){
     case 'choose': if(p && p.type==='choose' && p.team===tk) answerChoose(+d.i); return;
     case 'offer':  if(p && p.type==='offer' && p.team===tk) answerOffer(!!d.use); return;
-    case 'answer': if(p && p.type==='question' && p.team===tk) answerQuestion('pick', +d.i); return;
+    case 'answer': if(p && p.type==='question' && p.team===tk && !p.revealed) answerQuestion('pick', +d.i); return;   // ตอบได้เฉพาะทีมผู้อัญเชิญ
   }
   if(state.winner) return;
   if(tk !== state.turn){ say(`ทีม ${tk}: ยังไม่ถึงตาของคุณ`, 'bad'); return render(); }

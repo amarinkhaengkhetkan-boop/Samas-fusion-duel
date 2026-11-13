@@ -533,10 +533,11 @@ function pendingHTML(){
       <div style="text-align:center"><span class="qnum">คำถามที่ ${p.i+1}/${p.n} · ทีม ${tk} ตอบ</span></div>
       <div class="qbox">${esc(p.q)}</div>
       <div class="qopts">${p.opts.map((o,i)=>{ let cls=''; if(p.revealed){ if(i===p.ci) cls='ok'; else if(i===p.picked) cls='no'; }
-        return `<button class="btn qo ${cls}" ${p.revealed?'':`data-p="q${i}"`}>${esc(o)}</button>`; }).join('')}</div>
+        const can = !p.revealed && !(ROOM && onPhone);
+        return `<button class="btn qo ${cls}" ${can?`data-p="q${i}"`:'disabled'}>${esc(o)}</button>`; }).join('')}</div>
       ${p.revealed ? `${c && p.correct ? `<div class="mgrid"><div class="card" style="--cw:clamp(100px,20vh,200px)">${compFaceHTML(c)}</div></div>`:''}
         <div class="ans" style="font-size:clamp(20px,4vh,44px)">${p.correct?'✓ ถูกต้อง!':'✗ ยังไม่ถูก — คำตอบคือ “'+esc(p.a)+'”'}</div>`
-      : `<p style="text-align:center">${onPhone?`📱 ทีม ${tk} เลือกคำตอบบนมือถือ (ครูกดแทนได้)`:`ให้ทีม ${tk} ตอบ แล้วครูกดตัวเลือก`}</p>`}
+      : `<p style="text-align:center">${ROOM && onPhone?`📱 รอทีม ${tk} (ผู้อัญเชิญ) เลือกคำตอบบนมือถือ`:`ให้ทีม ${tk} ตอบ แล้วกดตัวเลือก`}</p>`}
     </div></div>`;
   }
   if(p.type === 'offer'){
@@ -576,7 +577,7 @@ function render(){
 document.getElementById('pend').addEventListener('click', e => {
   const b = e.target.closest('[data-p]'); if(!b) return;
   const v = b.dataset.p;
-  if(v[0]==='q') return answerQuestion('pick', +v.slice(1));
+  if(v[0]==='q'){ const p = state && state.pending; if(ROOM && p && phoneOn[p.team]) return; return answerQuestion('pick', +v.slice(1)); }
   if(v==='use') return answerOffer(true);
   if(v==='skip') return answerOffer(false);
   if(v==='peek'){ teacherPeek = true; return render(); }

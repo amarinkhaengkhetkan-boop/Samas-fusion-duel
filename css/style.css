@@ -349,3 +349,6 @@ body.phone .ph-head{margin-bottom:8px}
 html.ov-open,html.ov-open body{overflow:hidden!important;touch-action:none}
 html.ov-open .ph-ovbox{touch-action:pan-y}
 .xgrid .card{transition:none} .xgrid .card:hover{transform:none}
+
+body.phone #pend{display:none}   /* เครื่องที่เป็นผู้เล่น (โฮสต์เล่นทีม A) ไม่แสดงหน้าต่างคำถามของจอกลาง */
+.btn.qo:disabled{opacity:1;cursor:default}
