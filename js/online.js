@@ -138,9 +138,11 @@ function leaveRoom(){
   try{ localStorage.removeItem('fusion-duel-last'); }catch(e){}
   location.href = location.pathname;
 }
-function listen(path, cb, ev='value'){
-  const ref = rr(path); const fn = ref.on(ev, cb, e => console.warn(path, e));
-  offFns.push(() => ref.off(ev, fn));
+function listen(path, cb, ev='value', onErr){
+  const ref = rr(path);
+  const fn = ref.on(ev, cb, e => { console.warn(path, e); onErr && onErr(e); });
+  const off = () => ref.off(ev, fn);
+  offFns.push(off); return off;
 }
 
 /* ---------- เข้าห้องแล้ว: ล็อบบี้ ---------- */
@@ -170,9 +172,15 @@ function onRoomChange(){
   if(!ROOM) return;
   phoneOn = {A: !!SEATS.A, B: !!SEATS.B};
   if(!IS_HOST && MYSEAT && privListening !== MYSEAT){
+    /* ต่อการ์ดในมือของทีมเรา — ถ้าเซิร์ฟเวอร์ยังไม่ยืนยันที่นั่ง (ปฏิเสธสิทธิ์อ่าน) ให้ลองใหม่อัตโนมัติ */
     privListening = MYSEAT;
-    listen('private/' + MYSEAT, s => { privCache = s.val(); composeS(); });
+    const seatNow = MYSEAT;
+    listen('private/' + seatNow, s => { privCache = s.val(); composeS(); }, 'value', () => {
+      privListening = null; privCache = null;
+      setTimeout(() => { if(MYSEAT === seatNow) onRoomChange(); }, 1500);
+    });
   }
+  if(!IS_HOST && !MYSEAT){ privListening = null; privCache = null; }
   if(IS_HOST && !state && SEATS.A && SEATS.B && READY.A && READY.B) return hostStart();
   const started = IS_HOST ? !!state : !!(pubCache && pubCache.j);
   if(!started) return showLobby();
@@ -355,7 +363,10 @@ function renderPhone(){
     ${o.df.length?`<div class="zhint">${o.df.join(' ')}</div>`:''}
   </section>`;
   html += `<div class="ph-mid"><div class="phases">${PHASES.map(([k,l])=>`<span class="${S.phase===k?'on':''}">${l}</span>`).join('')}</div>
-    <div class="ph-msg ${S.tone||''}">${esc(S.msg||'')}</div><div class="zhint">✦ เวทกองกลาง: ${MTYPES.map(mt=>`${esc(magicName(mt))} ${S.sz[mt]||0}`).join(' · ')}</div></div>`;
+    <div class="ph-msg ${S.tone||''}">${esc(S.msg||'')}</div>
+    <div class="ph-lbl">กองกลาง · เวทสนธิ (ใช้ร่วมกัน)${myTurn && !me.s && !p ? ' — แตะเพื่อร่าย' : ''}</div>
+    <div class="ph-magic">${MTYPES.map(mt => { const n = S.sz[mt]||0, can = myTurn && !me.s && !p && n;
+      return `<figure>${n ? `<div class="card pile ${can?'click':''}" ${can?`data-m="cast:${mt}"`:''}>${magicFaceHTML(mt)}<span class="count">${n}</span></div>` : `<div class="slot mslot">ว่าง</div>`}<figcaption>${esc(magicName(mt))}</figcaption></figure>`; }).join('')}</div></div>`;
   html += `<section class="ph-side me ${ME}">
     <div class="ph-lbl">รากศัพท์ที่วางเตรียม (แตะเพื่อคืนขึ้นมือ)</div>
     <div class="ph-row fus big">${me.f.map((c,i)=> c ? `<div class="card ${me.f.every(Boolean)?'linked':''}" data-m="un${i}">${rootFaceHTML(c[1])}</div>` : `<div class="slot ${phoneSel?'target':''}" data-m="pl${i}">ช่อง ${i+1}</div>`).join('')}

@@ -322,3 +322,8 @@ body.phone .ph-head{margin-bottom:8px}
 .btn.qo.ok{background:#3ccf8e;color:#062a1a;box-shadow:0 0 16px #3ccf8e} .btn.qo.no{background:#ff5a78;color:#2a0610}
 .ph-sheet .qt{font-size:18px}
 @media (max-width:520px){ .seats{grid-template-columns:1fr} .vs{font-size:20px} }
+
+.ph-magic{display:flex;justify-content:center;gap:14px;--cw:min(18vw,78px);margin-top:4px}
+.ph-magic figure{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ph-magic figcaption{font-family:Mitr;font-size:12px;color:#e9d8ff}
+.ph-magic .mslot{width:var(--cw)}
