@@ -6,6 +6,7 @@
      · private/A, B    = การ์ดในมือของแต่ละทีม (กฎฐานข้อมูลให้อ่านได้เฉพาะเจ้าของที่นั่ง + โฮสต์)
    - ผู้เล่นส่งคำสั่งเข้า actions/ แล้วโฮสต์เป็นผู้ตรวจและดำเนินการ
    ===================================================================== */
+const APP_VER = '20261113b';
 let AUTH = null, DB = null, USER = null;
 let ROOM = null, ROOM_PW = '', IS_HOST = false, MYSEAT = null, ROOMINFO = null;
 let SEATS = {}, READY = {}, NAMES = {};
@@ -350,7 +351,7 @@ function renderPhone(){
   if(!ME){ el.innerHTML = `<div class="ph-wait">คุณเป็นผู้ชมในห้องนี้ (ไม่มีที่นั่ง)<br><br><button class="btn ghost" onclick="leaveRoom()">ออกจากห้อง</button></div>`; return; }
   const head = (st, cls) => `<div class="ph-head ${ME}"><span class="tn">ทีม ${ME}</span><span>${S&&S[ME]?esc(S[ME].n):''}</span><span class="st ${cls||''}">${st}</span>
     ${S&&!S.none?`<span class="sub">★ ทีม A ${S.A.c.filter(Boolean).length}/4 · ทีม B ${S.B.c.filter(Boolean).length}/4 · ⏱ ${fmtTime(S.tl)}${S.pz?' ⏸':''} · รอบ ${S.round} · ห้อง ${ROOM}</span>`:''}</div>`;
-  const diag = `<div class="zhint" style="text-align:center;margin-top:16px">ห้อง ${ROOM} · ${phoneConn==='ok'?'🟢 ออนไลน์':'🔴 ขาดการเชื่อมต่อ'} · ${esc(myName())} · <a href="#" onclick="leaveRoom();return false">ออกจากห้อง</a></div>`;
+  const diag = `<div class="zhint" style="text-align:center;margin-top:16px">เวอร์ชัน ${APP_VER} · ห้อง ${ROOM} · ${phoneConn==='ok'?'🟢 ออนไลน์':'🔴 ขาดการเชื่อมต่อ'} · ${esc(myName())} · <a href="#" onclick="leaveRoom();return false">ออกจากห้อง</a></div>`;
   if(!S || S.none){ el.innerHTML = head('รอเริ่มเกม') + `<div class="ph-wait">รอให้ทั้งสองทีมกดพร้อม…</div>` + diag; return; }
   const me = S[ME], o = S[other(ME)], OK = other(ME), myTurn = S.turn === ME, p = S.p;
   let html = head(S.win ? (S.win===ME?'🏆 ชนะ!':'จบเกม') : myTurn ? '▶ ตาของคุณ' : `รอทีม ${S.turn}`, myTurn && !S.win ? 'go' : '');
@@ -366,6 +367,7 @@ function renderPhone(){
   </section>`;
   html += `<div class="ph-mid"><div class="phases">${PHASES.map(([k,l])=>`<span class="${S.phase===k?'on':''}">${l}</span>`).join('')}</div>
     <div class="ph-msg ${S.tone||''}">${esc(S.msg||'')}</div>
+    <div class="ph-act xbtns"><button class="btn" data-m="xme">📜 Extra Deck ของเรา (${me.x})</button><button class="btn ghost" data-m="xopp">📜 Extra Deck ทีม ${OK} (${o.x})</button></div>
     <div class="ph-lbl">กองกลาง · เวทสนธิ (ใช้ร่วมกัน)${myTurn && !me.s && !p ? ' — แตะเพื่อร่าย' : ''}</div>
     <div class="ph-magic">${MTYPES.map(mt => { const n = S.sz[mt]||0, can = myTurn && !me.s && !p && n;
       return `<figure>${n ? `<div class="card pile ${can?'click':''}" ${can?`data-m="cast:${mt}"`:''}>${magicFaceHTML(mt)}<span class="count">${n}</span></div>` : `<div class="slot mslot">ว่าง</div>`}<figcaption>${esc(magicName(mt))}</figcaption></figure>`; }).join('')}</div></div>`;

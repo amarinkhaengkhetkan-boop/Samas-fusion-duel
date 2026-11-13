@@ -336,3 +336,7 @@ body.phone .ph-head{margin-bottom:8px}
 .xgrid{--cw:min(25vw,105px)!important}
 .xgrid figcaption{font-family:Mitr;font-size:12px;color:#ffe9a3;text-align:center}
 .ph-side.me .ph-row.cmp{--cw:min(16vw,80px);flex-wrap:nowrap}
+
+#phone [data-m]{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.xbtns{margin:6px 0}
+.xbtns .btn{font-size:14px;padding:8px 6px}
