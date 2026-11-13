@@ -340,3 +340,12 @@ body.phone .ph-head{margin-bottom:8px}
 #phone [data-m]{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .xbtns{margin:6px 0}
 .xbtns .btn{font-size:14px;padding:8px 6px}
+
+/* หน้าต่าง Extra Deck บนมือถือ */
+.ph-ov{position:fixed;inset:0;z-index:30;background:#0a0520c0;display:flex;align-items:flex-end;justify-content:center;padding:10px;overscroll-behavior:contain}
+.ph-ovbox{width:100%;max-width:560px;max-height:82vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  background:#2a1765;border:2px solid var(--gold);border-radius:16px;padding:12px;box-shadow:0 -6px 24px #000a}
+.ph-ovbox h4{font-family:Mitr;font-weight:500;font-size:16px;color:#ffe9a3;margin-bottom:4px}
+html.ov-open,html.ov-open body{overflow:hidden!important;touch-action:none}
+html.ov-open .ph-ovbox{touch-action:pan-y}
+.xgrid .card{transition:none} .xgrid .card:hover{transform:none}

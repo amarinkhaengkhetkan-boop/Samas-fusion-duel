@@ -6,7 +6,7 @@
      · private/A, B    = การ์ดในมือของแต่ละทีม (กฎฐานข้อมูลให้อ่านได้เฉพาะเจ้าของที่นั่ง + โฮสต์)
    - ผู้เล่นส่งคำสั่งเข้า actions/ แล้วโฮสต์เป็นผู้ตรวจและดำเนินการ
    ===================================================================== */
-const APP_VER = '20261113b';
+const APP_VER = '20261113c';
 let AUTH = null, DB = null, USER = null;
 let ROOM = null, ROOM_PW = '', IS_HOST = false, MYSEAT = null, ROOMINFO = null;
 let SEATS = {}, READY = {}, NAMES = {};
@@ -382,17 +382,7 @@ function renderPhone(){
     <div class="ph-hand">${me.h.map(c=>`<div class="card ${phoneSel===c[0]?'sel':''}" data-m="h${c[0]}">${rootFaceHTML(c[1])}${c[2]?'<span class="tag">👁</span>':''}</div>`).join('') || '<span class="zhint">ไม่มีการ์ด</span>'}</div>
   </section>`;
   let sheet = '';
-  if(zoomCid && COMP[zoomCid]){
-    const c = COMP[zoomCid];
-    sheet = `<div class="ph-zoom"><div class="card">${compFaceHTML(c)}</div><div><h4>${esc(c.name)}</h4>
-      <div class="zhint"><span class="pill ${c.type}">${c.type==='samas'?'คำสมาส':'คำสนธิ'}</span> ${esc(c.rootNames.join(' + '))}${c.magic?' + เวท'+esc(magicName(c.magic)):''}</div>
-      <div class="ph-eff"><b>${esc(c.effect.name)}</b><br>${esc(c.effect.description)}</div></div></div>
-      <div class="ph-act"><button class="btn" data-m="zclose">ปิด</button></div>`;
-  } else if(xView){
-    const tk = xView === 'me' ? ME : OK, list = (S[tk].xc || []);
-    sheet = `<h4>Extra Deck ${tk} — คำที่ยังอัญเชิญได้ (${list.length})</h4><div class="zhint">แตะการ์ดเพื่อดูสูตรและเอฟเฟค</div>
-      <div class="mgrid xgrid">${list.map(cid=>`<figure><div class="card pick" data-m="z:${cid}">${compFaceHTML(COMP[cid])}</div><figcaption>${esc(COMP[cid].name)}</figcaption></figure>`).join('') || '<span class="zhint">อัญเชิญครบแล้ว</span>'}</div>
-      <div class="ph-act"><button class="btn" data-m="xclose">ปิด</button></div>`;
+  if(false){
   } else if(p){
     if(p.type === 'question'){
       const mine = p.team === ME;
@@ -414,18 +404,57 @@ function renderPhone(){
     const nm = (me.h.find(c=>c[0]===phoneSel)||[])[1] || '';
     sheet = `<h4>“${esc(nm)}”</h4><div class="ph-act"><button class="btn" data-m="pl0">วางช่อง 1</button><button class="btn" data-m="pl1">วางช่อง 2</button><button class="btn no" data-m="disc">ทิ้ง</button><button class="btn ghost" data-m="h${phoneSel}">ยกเลิก</button></div>`;
   }
-  if(S.win && !xView && !zoomCid) sheet = `<h4>${S.win===ME?'🏆 ทีมเราชนะ!':'จบเกม — ทีม '+S.win+' ชนะ'}</h4><div class="ph-act"><button class="btn ghost" onclick="leaveRoom()">ออกจากห้อง</button></div>`;
+  if(S.win) sheet = `<h4>${S.win===ME?'🏆 ทีมเราชนะ!':'จบเกม — ทีม '+S.win+' ชนะ'}</h4><div class="ph-act"><button class="btn ghost" onclick="leaveRoom()">ออกจากห้อง</button></div>`;
   if(sheet) html += `<div class="ph-sheet">${sheet}</div>`;
   html += myTurn && !S.win ? `<div class="ph-bar"><button class="btn" data-m="draw" ${S.hd?'disabled':''}>จั่ว</button><button class="btn summon" data-m="summon" ${S.sm?'disabled':''}>⚡ อัญเชิญ</button><button class="btn ghost" data-m="end">จบเทิร์น</button></div>` : '';
-  el.innerHTML = html + diag;
+  const y = window.scrollY;
+  const out = html + diag;
+  if(out !== lastPhoneHTML){ el.innerHTML = out; lastPhoneHTML = out; window.scrollTo(0, y); }
+}
+let lastPhoneHTML = '';
+/* หน้าต่างดู Extra Deck / การ์ด: แยกจากสนาม ไม่ถูกวาดใหม่ตอนข้อมูลเกมอัปเดต (จึงไม่กระตุก) · แตะพื้นที่ว่างรอบ ๆ เพื่อปิด */
+let ovEl = null;
+function renderOverlay(){
+  if(!ovEl){
+    ovEl = document.createElement('div'); ovEl.id = 'phov'; document.body.appendChild(ovEl);
+    ovEl.addEventListener('click', e => {
+      const b = e.target.closest('[data-o]');
+      if(!b){ if(!e.target.closest('.ph-ovbox')) closeOverlay(); return; }
+      const v = b.dataset.o;
+      if(v === 'close') return closeOverlay();
+      if(v === 'back'){ zoomCid = null; return xView ? renderOverlay() : closeOverlay(); }
+      if(v.startsWith('z:')){ zoomCid = v.slice(2); return renderOverlay(); }
+    });
+  }
+  if(!S || S.none || (!xView && !zoomCid)) return closeOverlay();
+  let html = '';
+  if(zoomCid && COMP[zoomCid]){
+    const c = COMP[zoomCid];
+    html = `<div class="ph-zoom"><div class="card">${compFaceHTML(c)}</div><div><h4>${esc(c.name)}</h4>
+      <div class="zhint"><span class="pill ${c.type}">${c.type==='samas'?'คำสมาส':'คำสนธิ'}</span> ${esc(c.rootNames.join(' + '))}${c.magic?' + เวท'+esc(magicName(c.magic)):''}</div>
+      <div class="ph-eff"><b>${esc(c.effect.name)}</b><br>${esc(c.effect.description)}</div></div></div>
+      <div class="ph-act">${xView?'<button class="btn ghost" data-o="back">← กลับไปรายการ</button>':''}<button class="btn" data-o="close">ปิด</button></div>`;
+  } else {
+    const tk = xView === 'me' ? ME : other(ME), list = (S[tk].xc || []);
+    html = `<h4>Extra Deck ${tk} — คำที่ยังอัญเชิญได้ (${list.length})</h4><div class="zhint">แตะการ์ดเพื่อดูสูตรและเอฟเฟค · แตะพื้นที่ว่างเพื่อปิด</div>
+      <div class="mgrid xgrid">${list.map(cid=>`<figure><div class="card pick" data-o="z:${cid}">${compFaceHTML(COMP[cid])}</div><figcaption>${esc(COMP[cid].name)}</figcaption></figure>`).join('') || '<span class="zhint">อัญเชิญครบแล้ว</span>'}</div>
+      <div class="ph-act"><button class="btn" data-o="close">ปิด</button></div>`;
+  }
+  const keep = ovEl.querySelector('.ph-ovbox'), st = keep && !zoomCid ? keep.scrollTop : 0;
+  ovEl.innerHTML = `<div class="ph-ov"><div class="ph-ovbox">${html}</div></div>`;
+  if(st) ovEl.querySelector('.ph-ovbox').scrollTop = st;
+  document.documentElement.classList.add('ov-open');
+}
+function closeOverlay(){
+  xView = null; zoomCid = null;
+  if(ovEl) ovEl.innerHTML = '';
+  document.documentElement.classList.remove('ov-open');
 }
 function phoneClick(e){
   const b = e.target.closest('[data-m]'); if(!b || b.disabled) return;
   const v = b.dataset.m;
-  if(v==='xme'||v==='xopp'){ xView = v==='xme'?'me':'opp'; zoomCid = null; return renderPhone(); }
-  if(v==='xclose'){ xView = null; return renderPhone(); }
-  if(v.startsWith('z:')){ zoomCid = v.slice(2); return renderPhone(); }
-  if(v==='zclose'){ zoomCid = null; return renderPhone(); }
+  if(v==='xme'||v==='xopp'){ xView = v==='xme'?'me':'opp'; zoomCid = null; return renderOverlay(); }
+  if(v.startsWith('z:')){ zoomCid = v.slice(2); return renderOverlay(); }
   if(v==='castmenu'){ castMenu = !castMenu; phoneSel = null; return renderPhone(); }
   if(v.startsWith('cast:')){ castMenu = false; pEmit({a:'cast', m:v.slice(5)}); return renderPhone(); }
   if(v.startsWith('qa')) return pEmit({a:'answer', i:+v.slice(2)});
