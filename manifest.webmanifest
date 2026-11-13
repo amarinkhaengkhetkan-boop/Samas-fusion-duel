@@ -1,0 +1,9 @@
+{
+  "name": "SAMAS CODEBREAKERS: FUSION DUEL",
+  "short_name": "Fusion Duel",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#12062b",
+  "theme_color": "#12062b",
+  "icons": [{"src": "assets/backs/root-back.jpg", "sizes": "360x502", "type": "image/jpeg"}]
+}
