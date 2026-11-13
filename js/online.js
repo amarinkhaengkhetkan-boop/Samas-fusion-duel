@@ -10,6 +10,7 @@ let AUTH = null, DB = null, USER = null;
 let ROOM = null, ROOM_PW = '', IS_HOST = false, MYSEAT = null, ROOMINFO = null;
 let SEATS = {}, READY = {}, NAMES = {};
 let offFns = [];
+let xView = null, zoomCid = null;
 let S = null, phoneSel = null, castMenu = false, phoneConn = 'connecting', lastStateAt = 0, pubCache = null, privCache = null;
 let ME = null, online = true;
 
@@ -255,7 +256,7 @@ function showRoomPanel(){
 function snapshot(){
   if(!state) return {none:true};
   const T = t => ({ n:t.name, h:t.hand.map(c=>[c.uid,c.name,c.revealedUntil?1:0]), f:t.fusionZone.map(c=>c?[c.uid,c.name]:null),
-    s:t.sandhiSlot?(t.sandhiSlot.mtype||'vowel_sandhi'):0, c:t.completedZone.map(x=>x?x.cid:null), x:t.extraDeck.length, m:t.mainDeck.length,
+    s:t.sandhiSlot?(t.sandhiSlot.mtype||'vowel_sandhi'):0, c:t.completedZone.map(x=>x?x.cid:null), x:t.extraDeck.length, xc:t.extraDeck.map(x=>x.cid), m:t.mainDeck.length,
     d:t.discard.length, dt:t.discard.length?t.discard[t.discard.length-1].name:null, df:t.defenses.map(d=>DEF_LABEL[d.kind]) });
   return { turn:state.turn, round:state.round, phase:state.phase, hd:state.hasDrawn?1:0, sm:state.summoned||state.summonLost?1:0,
     win:state.winner, tl:state.timeLeft, pz:state.paused?1:0, sz:Object.fromEntries(MTYPES.map(mt=>[mt,pileCount(mt)])),
@@ -353,10 +354,11 @@ function renderPhone(){
   if(!S || S.none){ el.innerHTML = head('รอเริ่มเกม') + `<div class="ph-wait">รอให้ทั้งสองทีมกดพร้อม…</div>` + diag; return; }
   const me = S[ME], o = S[other(ME)], OK = other(ME), myTurn = S.turn === ME, p = S.p;
   let html = head(S.win ? (S.win===ME?'🏆 ชนะ!':'จบเกม') : myTurn ? '▶ ตาของคุณ' : `รอทีม ${S.turn}`, myTurn && !S.win ? 'go' : '');
-  const smallComp = arr => arr.map(cid=> cid ? `<div class="card">${compFaceHTML(COMP[cid])}</div>` : `<div class="slot cslot"><span></span></div>`).join('');
+  const smallComp = arr => arr.map(cid=> cid ? `<div class="card click" data-m="z:${cid}">${compFaceHTML(COMP[cid])}</div>` : `<div class="slot cslot"><span></span></div>`).join('');
   const revealed = o.h.filter(c=>c[2]);
   html += `<section class="ph-side opp ${OK}">
     <div class="ph-tt"><span class="tm">ทีม ${OK}</span>${esc(o.n)} <span class="r">★ ${o.c.filter(Boolean).length}/4</span></div>
+    <div class="ph-xrow"><div class="card pile click" data-m="xopp" style="--cw:40px">${backFaceHTML('X')}<span class="count">${o.x}</span></div><span class="zhint">Extra Deck ${OK} · แตะเพื่อดูคำที่ยังอัญเชิญได้</span></div>
     <div class="ph-backs">${o.h.map(c=> c[2] ? `<div class="card" style="--cw:30px">${rootFaceHTML(c[1])}<span class="tag">👁</span></div>` : `<div class="card" style="--cw:30px">${backFaceHTML(OK)}</div>`).join('')}<span class="zhint">มือ ${o.h.length}${revealed.length?` · เปิดเผย ${revealed.map(c=>esc(c[1])).join(', ')}`:''}</span></div>
     <div class="ph-lbl">คำสมบูรณ์ ${OK}</div><div class="ph-row cmp">${smallComp(o.c)}</div>
     <div class="ph-lbl">รากศัพท์ที่วางเตรียม ${OK}</div><div class="ph-row fus">${o.f.map(c=> c ? `<div class="card">${rootFaceHTML(c[1])}</div>` : `<div class="slot">ว่าง</div>`).join('')}${o.s?`<div class="card mcard">${magicFaceHTML(o.s)}</div>`:''}</div>
@@ -371,13 +373,25 @@ function renderPhone(){
     <div class="ph-lbl">รากศัพท์ที่วางเตรียม (แตะเพื่อคืนขึ้นมือ)</div>
     <div class="ph-row fus big">${me.f.map((c,i)=> c ? `<div class="card ${me.f.every(Boolean)?'linked':''}" data-m="un${i}">${rootFaceHTML(c[1])}</div>` : `<div class="slot ${phoneSel?'target':''}" data-m="pl${i}">ช่อง ${i+1}</div>`).join('')}
       ${me.s ? `<div class="card mcard" data-m="uncast">${magicFaceHTML(me.s)}</div>` : `<div class="slot mslot" data-m="castmenu">แตะเพื่อ<br>ร่ายเวท<br>สนธิ</div>`}</div>
-    <div class="ph-lbl">คำสมบูรณ์ของเรา ★ ${me.c.filter(Boolean).length}/4</div><div class="ph-row cmp">${smallComp(me.c)}</div>
+    <div class="ph-lbl">Extra Deck ${ME} และคำสมบูรณ์ของเรา ★ ${me.c.filter(Boolean).length}/4</div>
+    <div class="ph-row cmp"><div class="card pile click xpile" data-m="xme">${backFaceHTML('X')}<span class="count">${me.x}</span></div>${smallComp(me.c)}</div>
     <div class="zhint">สำรับ ${me.m} · กองทิ้ง ${me.d}${me.dt?` (บนสุด: ${esc(me.dt)})`:''} · Extra Deck ${me.x}${me.df.length?` · ${me.df.join(' ')}`:''}</div>
     <div class="ph-tt" style="margin-top:8px"><span class="tm">มือทีม ${ME}</span>${me.h.length} ใบ ${phoneSel?'<span class="r">เลือกแล้ว — แตะช่องว่างด้านบน</span>':'<span class="r">แตะการ์ดเพื่อเลือก</span>'}</div>
     <div class="ph-hand">${me.h.map(c=>`<div class="card ${phoneSel===c[0]?'sel':''}" data-m="h${c[0]}">${rootFaceHTML(c[1])}${c[2]?'<span class="tag">👁</span>':''}</div>`).join('') || '<span class="zhint">ไม่มีการ์ด</span>'}</div>
   </section>`;
   let sheet = '';
-  if(p){
+  if(zoomCid && COMP[zoomCid]){
+    const c = COMP[zoomCid];
+    sheet = `<div class="ph-zoom"><div class="card">${compFaceHTML(c)}</div><div><h4>${esc(c.name)}</h4>
+      <div class="zhint"><span class="pill ${c.type}">${c.type==='samas'?'คำสมาส':'คำสนธิ'}</span> ${esc(c.rootNames.join(' + '))}${c.magic?' + เวท'+esc(magicName(c.magic)):''}</div>
+      <div class="ph-eff"><b>${esc(c.effect.name)}</b><br>${esc(c.effect.description)}</div></div></div>
+      <div class="ph-act"><button class="btn" data-m="zclose">ปิด</button></div>`;
+  } else if(xView){
+    const tk = xView === 'me' ? ME : OK, list = (S[tk].xc || []);
+    sheet = `<h4>Extra Deck ${tk} — คำที่ยังอัญเชิญได้ (${list.length})</h4><div class="zhint">แตะการ์ดเพื่อดูสูตรและเอฟเฟค</div>
+      <div class="mgrid xgrid">${list.map(cid=>`<figure><div class="card pick" data-m="z:${cid}">${compFaceHTML(COMP[cid])}</div><figcaption>${esc(COMP[cid].name)}</figcaption></figure>`).join('') || '<span class="zhint">อัญเชิญครบแล้ว</span>'}</div>
+      <div class="ph-act"><button class="btn" data-m="xclose">ปิด</button></div>`;
+  } else if(p){
     if(p.type === 'question'){
       const mine = p.team === ME;
       sheet = `<h4>คำถาม ${p.i+1}/${p.n} · ${mine?'ทีมเราตอบ':'ทีม '+p.team+' ตอบ'}</h4><div class="qt">${esc(p.q)}</div>
@@ -398,7 +412,7 @@ function renderPhone(){
     const nm = (me.h.find(c=>c[0]===phoneSel)||[])[1] || '';
     sheet = `<h4>“${esc(nm)}”</h4><div class="ph-act"><button class="btn" data-m="pl0">วางช่อง 1</button><button class="btn" data-m="pl1">วางช่อง 2</button><button class="btn no" data-m="disc">ทิ้ง</button><button class="btn ghost" data-m="h${phoneSel}">ยกเลิก</button></div>`;
   }
-  if(S.win) sheet = `<h4>${S.win===ME?'🏆 ทีมเราชนะ!':'จบเกม — ทีม '+S.win+' ชนะ'}</h4><div class="ph-act"><button class="btn ghost" onclick="leaveRoom()">ออกจากห้อง</button></div>`;
+  if(S.win && !xView && !zoomCid) sheet = `<h4>${S.win===ME?'🏆 ทีมเราชนะ!':'จบเกม — ทีม '+S.win+' ชนะ'}</h4><div class="ph-act"><button class="btn ghost" onclick="leaveRoom()">ออกจากห้อง</button></div>`;
   if(sheet) html += `<div class="ph-sheet">${sheet}</div>`;
   html += myTurn && !S.win ? `<div class="ph-bar"><button class="btn" data-m="draw" ${S.hd?'disabled':''}>จั่ว</button><button class="btn summon" data-m="summon" ${S.sm?'disabled':''}>⚡ อัญเชิญ</button><button class="btn ghost" data-m="end">จบเทิร์น</button></div>` : '';
   el.innerHTML = html + diag;
@@ -406,6 +420,10 @@ function renderPhone(){
 function phoneClick(e){
   const b = e.target.closest('[data-m]'); if(!b || b.disabled) return;
   const v = b.dataset.m;
+  if(v==='xme'||v==='xopp'){ xView = v==='xme'?'me':'opp'; zoomCid = null; return renderPhone(); }
+  if(v==='xclose'){ xView = null; return renderPhone(); }
+  if(v.startsWith('z:')){ zoomCid = v.slice(2); return renderPhone(); }
+  if(v==='zclose'){ zoomCid = null; return renderPhone(); }
   if(v==='castmenu'){ castMenu = !castMenu; phoneSel = null; return renderPhone(); }
   if(v.startsWith('cast:')){ castMenu = false; pEmit({a:'cast', m:v.slice(5)}); return renderPhone(); }
   if(v.startsWith('qa')) return pEmit({a:'answer', i:+v.slice(2)});
