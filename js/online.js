@@ -6,12 +6,12 @@
      · private/A, B    = การ์ดในมือของแต่ละทีม (กฎฐานข้อมูลให้อ่านได้เฉพาะเจ้าของที่นั่ง + โฮสต์)
    - ผู้เล่นส่งคำสั่งเข้า actions/ แล้วโฮสต์เป็นผู้ตรวจและดำเนินการ
    ===================================================================== */
-const APP_VER = '20261114c';
+const APP_VER = '20261114e';
 let AUTH = null, DB = null, USER = null;
 let ROOM = null, ROOM_PW = '', IS_HOST = false, MYSEAT = null, ROOMINFO = null;
 let SEATS = {}, READY = {}, NAMES = {};
 let offFns = [];
-let xView = null, zoomCid = null;
+let xView = null, zoomCid = null, zoomRoot = null;
 let S = null, phoneSel = null, castMenu = false, phoneConn = 'connecting', lastStateAt = 0, pubCache = null, privCache = null;
 let ME = null, online = true;
 
@@ -256,11 +256,11 @@ function showRoomPanel(){
 /* ---------- โฮสต์: ส่งสถานะ / รับคำสั่ง ---------- */
 function snapshot(){
   if(!state) return {none:true};
-  const T = t => ({ n:t.name, h:t.hand.map(c=>[c.uid,c.name,c.revealedUntil?1:0]), f:t.fusionZone.map(c=>c?[c.uid,c.name]:null),
+  const T = t => ({ n:t.name, h:t.hand.map(c=>[c.uid,c.name,c.revealedUntil?1:0]), f:t.fusionZone.map(c=>c?[c.uid,c.name]:null), lk:[0,1].map(i=>isLocked(t,i)?1:0),
     s:t.sandhiSlot?(t.sandhiSlot.mtype||'vowel_sandhi'):0, c:t.completedZone.map(x=>x?x.cid:null), cu:t.completedZone.map(x=>x&&x.used?1:0), x:t.extraDeck.length, xc:t.extraDeck.map(x=>x.cid), m:t.mainDeck.length,
     d:t.discard.length, dt:t.discard.length?t.discard[t.discard.length-1].name:null, df:t.defenses.map(d=>DEF_LABEL[d.kind]) });
   return { turn:state.turn, round:state.round, phase:state.phase, hd:state.hasDrawn?1:0, sm:state.summoned||state.summonLost?1:0,
-    win:state.winner, tl:state.timeLeft, tt:state.turnLeft, pz:state.paused?1:0, sz:Object.fromEntries(MTYPES.map(mt=>[mt,pileCount(mt)])),
+    win:state.winner, exp:state.exp?1:0, tl:state.timeLeft, tt:state.turnLeft, pz:state.paused?1:0, sz:Object.fromEntries(MTYPES.map(mt=>[mt,pileCount(mt)])),
     msg:msg.text, tone:msg.tone, p:state.pending, A:T(state.teamA), B:T(state.teamB) };
 }
 /* สนามสาธารณะ: ปิดชื่อการ์ดในมือ (ยกเว้นใบที่ถูกเปิดเผย) และตัวเลือกที่เป็นความลับ */
@@ -366,7 +366,7 @@ function renderPhone(){
     <div class="ph-xrow"><div class="card pile click" data-m="xopp" style="--cw:40px">${backFaceHTML('X')}<span class="count">${o.x}</span></div><span class="zhint">Extra Deck ${OK} · แตะเพื่อดูคำที่ยังอัญเชิญได้</span></div>
     <div class="ph-backs">${o.h.map(c=> c[2] ? `<div class="card" style="--cw:30px">${rootFaceHTML(c[1])}<span class="tag">👁</span></div>` : `<div class="card" style="--cw:30px">${backFaceHTML(OK)}</div>`).join('')}<span class="zhint">มือ ${o.h.length}${revealed.length?` · เปิดเผย ${revealed.map(c=>esc(c[1])).join(', ')}`:''}</span></div>
     <div class="ph-lbl">คำสมบูรณ์ ${OK}</div><div class="ph-row cmp">${smallComp(o.c, o.cu)}</div>
-    <div class="ph-lbl">รากศัพท์ที่วางเตรียม ${OK}</div><div class="ph-row fus">${o.f.map(c=> c ? `<div class="card">${rootFaceHTML(c[1])}</div>` : `<div class="slot">ว่าง</div>`).join('')}${o.s?`<div class="card mcard">${magicFaceHTML(o.s)}</div>`:''}</div>
+    <div class="ph-lbl">รากศัพท์ที่วางเตรียม ${OK}</div><div class="ph-row fus">${o.f.map((c,i)=> c ? `<div class="card click" data-m="zr:${esc(c[1])}">${rootFaceHTML(c[1])}</div>` : (o.lk&&o.lk[i] ? `<div class="slot locked">🔒</div>` : `<div class="slot">ว่าง</div>`)).join('')}${o.s?`<div class="card mcard">${magicFaceHTML(o.s)}</div>`:''}</div>
     ${o.df.length?`<div class="zhint">${o.df.join(' ')}</div>`:''}
   </section>`;
   html += `<div class="ph-mid"><div class="phases">${PHASES.map(([k,l])=>`<span class="${S.phase===k?'on':''}">${l}</span>`).join('')}</div>
@@ -377,13 +377,14 @@ function renderPhone(){
       return `<figure>${n ? `<div class="card pile ${can?'click':''}" ${can?`data-m="cast:${mt}"`:''}>${magicFaceHTML(mt)}<span class="count">${n}</span></div>` : `<div class="slot mslot">ว่าง</div>`}<figcaption>${esc(magicName(mt))}</figcaption></figure>`; }).join('')}</div></div>`;
   html += `<section class="ph-side me ${ME}">
     <div class="ph-lbl">รากศัพท์ที่วางเตรียม (แตะเพื่อคืนขึ้นมือ)</div>
-    <div class="ph-row fus big">${me.f.map((c,i)=> c ? `<div class="card ${me.f.every(Boolean)?'linked':''}" data-m="un${i}">${rootFaceHTML(c[1])}</div>` : `<div class="slot ${phoneSel?'target':''}" data-m="pl${i}">ช่อง ${i+1}</div>`).join('')}
+    <div class="ph-row fus big">${me.f.map((c,i)=> c ? `<div class="card ${me.f.every(Boolean)?'linked':''}" data-m="un${i}" data-zr="${esc(c[1])}">${rootFaceHTML(c[1])}</div>` : (me.lk&&me.lk[i] ? `<div class="slot locked">🔒<br>ล็อก</div>` : `<div class="slot ${phoneSel?'target':''}" data-m="pl${i}">ช่อง ${i+1}</div>`)).join('')}
       ${me.s ? `<div class="card mcard" data-m="uncast">${magicFaceHTML(me.s)}</div>` : `<div class="slot mslot" data-m="castmenu">แตะเพื่อ<br>ร่ายเวท<br>สนธิ</div>`}</div>
     <div class="ph-lbl">Extra Deck ${ME} และคำสมบูรณ์ของเรา ★ ${me.c.filter(Boolean).length}/4</div>
     <div class="ph-row cmp"><div class="card pile click xpile" data-m="xme">${backFaceHTML('X')}<span class="count">${me.x}</span></div>${smallComp(me.c, me.cu)}</div>
     <div class="zhint">สำรับ ${me.m} · กองทิ้ง ${me.d}${me.dt?` (บนสุด: ${esc(me.dt)})`:''} · Extra Deck ${me.x}${me.df.length?` · ${me.df.join(' ')}`:''}</div>
     <div class="ph-tt" style="margin-top:8px"><span class="tm">มือทีม ${ME}</span>${me.h.length} ใบ ${phoneSel?'<span class="r">เลือกแล้ว — แตะช่องว่างด้านบน</span>':'<span class="r">แตะการ์ดเพื่อเลือก</span>'}</div>
-    <div class="ph-hand">${me.h.map(c=>`<div class="card ${phoneSel===c[0]?'sel':''}" data-m="h${c[0]}">${rootFaceHTML(c[1])}${c[2]?'<span class="tag">👁</span>':''}</div>`).join('') || '<span class="zhint">ไม่มีการ์ด</span>'}</div>
+    <div class="ph-hand ${me.h.length && me.h.length<=6?'fan n'+me.h.length:''}">${me.h.map((c,i)=>`<div class="card ${phoneSel===c[0]?'sel':''}" style="--i:${i - (me.h.length-1)/2}" data-m="h${c[0]}" data-zr="${esc(c[1])}">${rootFaceHTML(c[1])}${c[2]?'<span class="tag">👁</span>':''}</div>`).join('') || '<span class="zhint">ไม่มีการ์ด</span>'}</div>
+    <div class="zhint" style="text-align:center">แตะเพื่อเลือก · กดค้างเพื่อขยายดูการ์ด</div>
   </section>`;
   let sheet = '';
   if(false){
@@ -412,7 +413,7 @@ function renderPhone(){
       <div class="ph-act"><button class="btn ghost" data-m="castmenu">ยกเลิก</button></div>`;
   } else if(phoneSel && myTurn){
     const nm = (me.h.find(c=>c[0]===phoneSel)||[])[1] || '';
-    sheet = `<h4>“${esc(nm)}”</h4><div class="ph-act"><button class="btn" data-m="pl0">วางช่อง 1</button><button class="btn" data-m="pl1">วางช่อง 2</button><button class="btn no" data-m="disc">ทิ้ง</button><button class="btn ghost" data-m="h${phoneSel}">ยกเลิก</button></div>`;
+    sheet = `<h4>“${esc(nm)}”</h4><div class="ph-act"><button class="btn" data-m="pl0">วางช่อง 1</button><button class="btn" data-m="pl1">วางช่อง 2</button><button class="btn no" data-m="disc">ทิ้ง</button><button class="btn ghost" data-m="zr:${esc(nm)}">🔍 ขยาย</button><button class="btn ghost" data-m="h${phoneSel}">ยกเลิก</button></div>`;
   }
   if(S.win) sheet = `<h4>${S.win===ME?'🏆 ทีมเราชนะ!':'จบเกม — ทีม '+S.win+' ชนะ'}</h4><div class="ph-act"><button class="btn ghost" onclick="leaveRoom()">ออกจากห้อง</button></div>`;
   if(sheet) html += `<div class="ph-sheet">${sheet}</div>`;
@@ -448,9 +449,16 @@ function renderOverlay(){
       if(v.startsWith('z:')){ zoomCid = v.slice(2); return renderOverlay(); }
     });
   }
-  if(!S || S.none || (!xView && !zoomCid)) return closeOverlay();
+  if(!S || S.none || (!xView && !zoomCid && !zoomRoot)) return closeOverlay();
   let html = '';
-  if(zoomCid && COMP[zoomCid]){
+  if(zoomRoot && ROOT[zoomRoot]){
+    const r = ROOT[zoomRoot];
+    const uses = GD.completedCards.filter(c => inRelease(c, S.exp ?? true) && c.rootNames.includes(r.name));
+    html = `<div class="ph-zoom big"><div class="card">${rootFaceHTML(r.name)}</div><div><h4>${esc(r.name)}</h4>
+      <div class="zhint"><span class="pill root">รากศัพท์</span></div>
+      <div class="ph-eff">ความหมาย: <b>${esc(r.meaning)}</b></div></div></div>
+      <div class="ph-act"><button class="btn" data-o="close">ปิด</button></div>`;
+  } else if(zoomCid && COMP[zoomCid]){
     const c = COMP[zoomCid];
     html = `<div class="ph-zoom"><div class="card">${compFaceHTML(c)}</div><div><h4>${esc(c.name)}</h4>
       <div class="zhint"><span class="pill ${c.type}">${c.type==='samas'?'คำสมาส':'คำสนธิ'}</span> ${esc(c.rootNames.join(' + '))}${c.magic?' + เวท'+esc(magicName(c.magic)):''}</div>
@@ -468,7 +476,7 @@ function renderOverlay(){
   document.documentElement.classList.add('ov-open');
 }
 function closeOverlay(){
-  xView = null; zoomCid = null;
+  xView = null; zoomCid = null; zoomRoot = null;
   if(ovEl) ovEl.innerHTML = '';
   document.documentElement.classList.remove('ov-open');
 }
@@ -477,6 +485,7 @@ function phoneClick(e){
   const v = b.dataset.m;
   if(v==='xme'||v==='xopp'){ xView = v==='xme'?'me':'opp'; zoomCid = null; return renderOverlay(); }
   if(v.startsWith('z:')){ zoomCid = v.slice(2); return renderOverlay(); }
+  if(v.startsWith('zr:')){ zoomRoot = v.slice(3); xView = null; zoomCid = null; return renderOverlay(); }
   if(v==='castmenu'){ castMenu = !castMenu; phoneSel = null; return renderPhone(); }
   if(v.startsWith('cast:')){ castMenu = false; pEmit({a:'cast', m:v.slice(5)}); return renderPhone(); }
   if(v.startsWith('qa')) return pEmit({a:'answer', i:+v.slice(2)});
@@ -492,7 +501,25 @@ function phoneClick(e){
   const map = {draw:'draw', summon:'summon', end:'end'};
   if(map[v]) pEmit({a:map[v]});
 }
-document.getElementById('phone').addEventListener('click', phoneClick);
+document.getElementById('phone').addEventListener('click', e => { if(lpFired){ lpFired = false; e.preventDefault(); return; } phoneClick(e); });
+/* กดค้างที่การ์ดเพื่อขยายดู (การ์ดในมือ / ช่องรากศัพท์ / คำสมบูรณ์) */
+let lpTimer = null, lpFired = false, lpStart = null;
+const phoneEl = document.getElementById('phone');
+phoneEl.addEventListener('pointerdown', e => {
+  lpFired = false;
+  const el = e.target.closest('[data-zr],[data-m^="z:"]'); if(!el) return;
+  lpStart = [e.clientX, e.clientY];
+  lpTimer = setTimeout(() => {
+    lpFired = true; setTimeout(() => { lpFired = false; }, 700);
+    if(el.dataset.zr){ zoomRoot = el.dataset.zr; zoomCid = null; xView = null; }
+    else { zoomCid = el.dataset.m.slice(2); zoomRoot = null; xView = null; }
+    if(navigator.vibrate) try{ navigator.vibrate(15); }catch(_){}
+    renderOverlay();
+  }, 450);
+});
+phoneEl.addEventListener('pointermove', e => { if(lpTimer && lpStart && Math.hypot(e.clientX-lpStart[0], e.clientY-lpStart[1]) > 10){ clearTimeout(lpTimer); lpTimer = null; } });
+['pointerup','pointercancel','pointerleave'].forEach(ev => phoneEl.addEventListener(ev, () => { clearTimeout(lpTimer); lpTimer = null; }));
+phoneEl.addEventListener('contextmenu', e => { if(e.target.closest('[data-zr],[data-m^="z:"]')) e.preventDefault(); });
 
 /* ---------- เริ่มต้นแอป ---------- */
 function startOffline(){

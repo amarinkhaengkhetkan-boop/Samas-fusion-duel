@@ -45,7 +45,8 @@ const magicFaceHTML = mt => { const m = MAGIC[mt || 'vowel_sandhi'];
   return `<div class="face magic"><span class="ft">การ์ดเวท</span><span class="fw">${esc(m?m.name:'เวทสนธิ')}</span><span class="fo">✦</span></div>`; };
 /* หลังการ์ด: ม่วง = รากศัพท์ (สำรับ/มือ), ขาว = Extra Deck · ขอบสีบอกทีม */
 const backFaceHTML = (cls) => cls==='X' ? `<div class="face img back-extra"></div>` : `<div class="face img back-root tb-${cls}"></div>`;
-const optFace = o => o.root ? rootFaceHTML(o.root) : backFaceHTML(o.back, '?');
+const optFace = o => o.root ? rootFaceHTML(o.root) : o.cid ? compFaceHTML(COMP[o.cid])
+  : o.slot != null ? `<div class="face slotface"><span class="fw">ช่อง ${o.slot+1}</span><span class="fm">🔒 ล็อก</span></div>` : backFaceHTML(o.back, '?');
 
 const LOTUS = `<svg viewBox="0 0 64 40"><g fill="#ff9fd0" stroke="#ffe9a3" stroke-width="1.2"><path d="M32 4C26 14 26 26 32 36C38 26 38 14 32 4Z"/><path d="M32 36C22 32 16 22 16 12C24 16 30 26 32 36Z"/><path d="M32 36C42 32 48 22 48 12C40 16 34 26 32 36Z"/><path d="M32 36C20 36 8 30 4 22C14 22 26 28 32 36Z" fill="#e66aa8"/><path d="M32 36C44 36 56 30 60 22C50 22 38 28 32 36Z" fill="#e66aa8"/></g></svg>`;
 const KANOK = gem => `<svg viewBox="0 0 40 40"><path d="M2 38C2 16 16 2 38 2C26 6 19 12 17 22C23 15 31 14 36 19C28 19 23 24 21 32C17 28 12 30 10 38Z" fill="#f6cf6a" stroke="#7a4a0c" stroke-width="1"/><path d="M9 9l4 -4 4 4 -4 4z" fill="${gem}" stroke="#fff" stroke-width=".8"/></svg>`;
@@ -110,6 +111,7 @@ function endTurn(){
   state.turnNo++; state.round = Math.ceil(state.turnNo/2); state.turn = other(state.turn);
   [state.teamA, state.teamB].forEach(x => {
     x.defenses = x.defenses.filter(d => d.until >= state.turnNo);
+    if(x.locks) Object.keys(x.locks).forEach(k => { if(x.locks[k] < state.turnNo){ delete x.locks[k]; } });
     x.hand.forEach(c => { if(c.revealedUntil && c.revealedUntil < state.turnNo) delete c.revealedUntil; });
   });
   startTurn();
@@ -147,6 +149,7 @@ function act(a, k, x){
       break;
     case 'fusion': {
       const i = +x;
+      if(isLocked(t, i)){ say(`🔒 ช่อง ${i+1} ของทีม ${t.key} ถูกล็อก — วางการ์ดไม่ได้จนจบเทิร์นนี้`, 'bad'); break; }
       if(state.selected){
         const hi = t.hand.findIndex(c=>c.uid===state.selected);
         if(hi < 0){ state.selected = null; break; }
@@ -292,7 +295,7 @@ function answerOffer(use){
 }
 /* ให้ทีมเลือกการ์ด: items = การ์ด (หรือ {c,i}); hidden = แสดงหลังการ์ด */
 function chooseCard(chooser, title, sub, items, cb, hidden=false){
-  state.pending = {type:'choose', team:chooser, title, sub, opts: items.map(it => hidden ? {back: (it.c||it).owner} : {root:(it.c||it).name})};
+  state.pending = {type:'choose', team:chooser, title, sub, opts: items.map(it => it.slot != null ? {slot:it.slot} : it.x ? {cid:it.x.cid} : hidden ? {back: (it.c||it).owner} : {root:(it.c||it).name})};
   pendingCb = {items, cb};
   render();
 }
@@ -378,6 +381,8 @@ function recover(t, then){
     then ? then(`นำ “${c.name}” กลับขึ้นมือ`) : done(`${t.name} นำ “${c.name}” จากกองทิ้งกลับขึ้นมือ`, 'good');
   });
 }
+const isLocked = (t, i) => !!(t.locks && t.locks[i] != null && t.locks[i] >= state.turnNo);
+const MAX_COMPLETED_FOR_DESTROY = 3;   // ห้ามทำลายเมื่อคู่แข่งมีคำสมบูรณ์ครบ 3 ใบแล้ว
 function resolveEffect(t, c){
   const o = team(other(t.key)), e = c.effect, p = e.params || {}, nm = e.name, K = t.key;
   switch(e.op){
@@ -407,6 +412,27 @@ function resolveEffect(t, c){
       return hostile(o, {name:nm, target:'staged', cat:'other'}, () => stagedOf(o).length, () =>
         chooseCard(K, nm, `เลือกรากศัพท์ที่ทีม ${o.key} เตรียมไว้ 1 ใบ ส่งกลับขึ้นมือเจ้าของ`, stagedOf(o), s => {
           o.fusionZone[s.i] = null; o.hand.push(s.c); done(`🌊 ${nm}: “${s.c.name}” กลับขึ้นมือทีม ${o.key}`, 'good'); }));
+    /* ทำลายคำสมบูรณ์ของฝ่ายตรงข้าม 1 ใบ (ผู้ใช้เอฟเฟคเลือก) → การ์ดกลับเข้า Extra Deck ของเจ้าของ อัญเชิญใหม่ได้ */
+    case 'destroy_opponent_completed': {
+      const list = o.completedZone.map((x,i) => x ? {x, i} : null).filter(Boolean);
+      if(!list.length) return done(`ทีม ${o.key} ยังไม่มีคำสมบูรณ์ — “${nm}” ไม่เกิดผล`, 'bad');
+      if(list.length >= MAX_COMPLETED_FOR_DESTROY) return done(`ทีม ${o.key} มีคำสมบูรณ์ ${list.length} ใบแล้ว — ทำลายไม่ได้ (กติกา: ห้ามทำลายเมื่อมีครบ 3 ใบ)`, 'bad');
+      return hostile(o, {name:nm, target:'completed', cat:'destroy'}, () => true, () =>
+        chooseCard(K, nm, `เลือกคำสมบูรณ์ของทีม ${o.key} 1 ใบ — การ์ดจะกลับเข้า Extra Deck ${o.key}`, list, s => {
+          o.completedZone[s.i] = null; delete s.x.used; o.extraDeck.push(s.x);
+          done(`💥 ${nm}: ทำลาย “${compOf(s.x).name}” ของทีม ${o.key} กลับเข้า Extra Deck (เหลือ ${filled(o.completedZone).length}/${RULES.winAtCompletedCards})`, 'good'); }));
+    }
+    /* ล็อกช่องรากศัพท์ว่างของฝ่ายตรงข้าม 1 ช่อง ตลอดเทิร์นถัดไปของฝ่ายตรงข้าม · ใช้ล็อกติดกันไม่ได้ */
+    case 'lock_opponent_fusion_slot': {
+      if(o.locks && Object.keys(o.locks).length) return done(`ทีม ${o.key} มีช่องที่ถูกล็อกอยู่แล้ว — “${nm}” ไม่เกิดผล`, 'bad');
+      if(t.lastLockTurn != null && t.lastLockTurn === state.turnNo - 2) return done(`ล็อกช่องติดกันสองเทิร์นไม่ได้ — “${nm}” ไม่เกิดผล`, 'bad');
+      const slots = o.fusionZone.map((c,i) => c ? null : {slot:i}).filter(Boolean);
+      if(!slots.length) return done(`ทีม ${o.key} ไม่มีช่องรากศัพท์ว่าง — “${nm}” ไม่เกิดผล`, 'bad');
+      return hostile(o, {name:nm, target:'staged', cat:'lock'}, () => true, () =>
+        chooseCard(K, nm, `เลือกช่องรากศัพท์ว่างของทีม ${o.key} ที่จะล็อก (ล็อกตลอดเทิร์นถัดไปของทีม ${o.key})`, slots, s => {
+          o.locks = o.locks || {}; o.locks[s.slot] = state.turnNo + 1; t.lastLockTurn = state.turnNo;
+          done(`🔒 ${nm}: ล็อกช่อง ${s.slot+1} ของทีม ${o.key} ตลอดเทิร์นถัดไป`, 'good'); }));
+    }
     case 'return_staged_to_deck_and_peek': {
       say('');
       const peek = () => { const top = lookTop(t, p.peek||1);
@@ -570,6 +596,58 @@ function centerHTML(){
       <button class="btn" ${da('endturn')}>จบเทิร์น ➜</button>
     </div></section>`;
 }
+
+/* =====================================================================
+   สนามดวลแบบสมมาตรทแยง (จอกลาง): ทีมฝั่งล่าง = view
+   ===================================================================== */
+const ring = (inner, cls='', attrs='') => `<div class="ring ${cls}" ${attrs}>${inner}</div>`;
+function arenaSide(t, pos){
+  const isAct = state.turn === t.key, sel = isAct && !!state.selected, linked = t.fusionZone.every(Boolean);
+  const comp = `<div class="ar-comp completed-word-zone" data-team="${t.key}">${t.completedZone.map((x,i)=> x
+      ? ring(`<div class="card click ${x.used?'used':''}" ${da('completed',t.key,i)} data-slot="${i}" data-uid="${x.uid}">${compFaceHTML(compOf(x))}${isDefense(compOf(x))?`<span class="dtag ${x.used?'off':''}">${x.used?'ใช้แล้ว':'🛡 พร้อม'}</span>`:''}</div>`, 'filled')
+      : ring(`<span class="rnum" data-slot="${i}">${i+1}</span>`, 'empty')).join('')}</div>`;
+  const fus = `<div class="ar-fus fusion-zone" data-team="${t.key}">${t.fusionZone.map((c,i)=> c
+      ? ring(`<div class="card ${isAct?'click':''} ${linked?'linked':''}" ${da('fusion',t.key,i)} data-uid="${c.uid}">${rootFaceHTML(c.name)}</div>`, 'filled big')
+      : isLocked(t,i) ? ring(`<span class="rlbl lockico">🔒<br>ล็อก</span>`, 'empty big locked')
+      : ring(`<span class="rlbl">ช่อง ${i+1}</span>`, `empty big ${isAct?'click':''} ${sel?'target':''}`, da('fusion',t.key,i))).join('')}
+      ${t.sandhiSlot ? ring(`<div class="card mcard click linked" ${da('sandhiSlot',t.key)}>${magicFaceHTML(t.sandhiSlot.mtype)}</div>`, 'filled small') : ring('<span class="rlbl">เวท</span>', 'empty small')}
+      ${linked?'<div class="beam"></div>':''}</div>`;
+  const top = t.discard[t.discard.length-1];
+  const piles = `<div class="ar-piles">
+      <figure class="extra-deck-zone" data-team="${t.key}">${t.extraDeck.length ? `<div class="card pile click" ${da('extra',t.key)}>${backFaceHTML('X')}<span class="count">${t.extraDeck.length}</span></div>` : `<div class="slot click" ${da('extra',t.key)}>ว่าง</div>`}<figcaption>EXTRA ${t.key}</figcaption></figure>
+      <figure>${t.mainDeck.length ? `<div class="card pile click ${isAct && !state.hasDrawn?'glow':''}" ${da('main',t.key)}>${backFaceHTML(t.key)}<span class="count">${t.mainDeck.length}</span></div>` : `<div class="slot click" ${da('main',t.key)}>หมด</div>`}<figcaption>สำรับ ${t.key}</figcaption></figure>
+      <figure>${top ? `<div class="card pile click ${sel?'glow':''}" ${da('discard',t.key)} data-uid="${top.uid}">${rootFaceHTML(top.name)}<span class="count">${t.discard.length}</span></div>` : `<div class="slot click ${sel?'target':''}" ${da('discard',t.key)}>ทิ้ง</div>`}<figcaption>กองทิ้ง ${t.key}</figcaption></figure>
+    </div>`;
+  const hand = `<div class="ar-hand hand-cards"><div class="zlabel">มือทีม ${t.key}${phoneOn[t.key]?' · อยู่บนมือถือ':''}</div><div class="fan">${handHTML(t, isAct)}</div></div>`;
+  const done = filled(t.completedZone).length;
+  const hud = `<div class="ar-hud ${t.key} ${isAct?'on':''}"><div class="av">${t.key}</div><div class="hi">
+      <div class="nm">${esc(t.name)} ${isAct?'<span class="turnflag">▶ ตานี้</span>':''}</div>
+      <div class="st">★ ${done}/${RULES.winAtCompletedCards} · สำรับ ${t.mainDeck.length} · มือ ${t.hand.length} ${phoneOn[t.key]?'· 📱':''}</div></div></div>`;
+  return {comp, fus, piles, hand, hud};
+}
+function arenaHTML(){
+  const near = team(view), far = team(other(view)), N = arenaSide(near,'near'), F = arenaSide(far,'far'), at = active();
+  const casting = !!(state.teamA.sandhiSlot || state.teamB.sandhiSlot), tl = state.turnLeft ?? TURN_SECONDS;
+  return `<div class="arena">
+    <div class="ar-banner"><div class="tn">รอบ ${state.round}</div><div class="who ${at.key}">ตาทีม ${at.key}</div>
+      <div class="phases">${PHASES.map(([k,l])=>`<span class="${state.phase===k?'on':''}">${l}</span>`).join('')}</div>
+      <div class="tools">${ROOM?`<button class="tbtn" data-ui="join">🔑 ${ROOM}</button>`:''}<button class="tbtn" data-ui="view">⇅</button><button class="tbtn" data-ui="hands">👁</button><button class="tbtn" data-ui="fs">⛶</button><button class="tbtn" data-ui="rules">กติกา</button><button class="tbtn" data-ui="setup">เริ่มใหม่</button></div></div>
+    <div class="a-fcomp">${F.comp}</div>
+    <div class="a-fhud">${F.hud}${F.hand}</div>
+    <div class="a-fpiles side-${far.key}">${F.piles}</div>
+    <div class="a-ffus">${F.fus}</div>
+    <div class="a-msg"><div class="msg ${msg.tone}">${esc(msg.text)}</div><div class="logo mini"><div class="l1">SAMAS CODEBREAKERS</div><div class="l2">FUSION DUEL</div></div></div>
+    <div class="a-center"><div class="magic-circle ${casting?'active':''}">${MAGIC_CIRCLE}</div>
+      <div class="ar-magic">${MTYPES.map(mt => { const n = pileCount(mt); return `<figure class="mfig">${n ? `<div class="card pile mpile click" ${da('sandhiZone',null,mt)}>${magicFaceHTML(mt)}<span class="count">${n}</span></div>` : `<div class="slot mslot">ว่าง</div>`}<figcaption>${esc(magicName(mt))}</figcaption></figure>`; }).join('')}</div></div>
+    <div class="a-time"><div class="bigclock ${tl<=10?'low':''}" id="tturn2" data-ui="pause">⌛ ${tl}</div><div class="tbar"><i id="tbar" style="width:${100*tl/TURN_SECONDS}%"></i></div>
+      <div class="zhint">⏱ ทั้งเกม <span id="timer">${fmtTime(state.timeLeft)}</span>${state.paused?' ⏸':''}</div></div>
+    <div class="a-nfus">${N.fus}</div>
+    <div class="a-npiles side-${near.key}">${N.piles}</div>
+    <div class="a-nhud">${N.hand}${N.hud}</div>
+    <div class="a-ncomp">${N.comp}</div>
+    <div class="a-ctrl"><button class="btn summon" ${da('summon')} ${state.summoned||state.summonLost?'disabled':''}>⚡ อัญเชิญ · ทีม ${at.key}</button><button class="btn" ${da('endturn')}>จบเทิร์น ➜</button></div>
+  </div>`;
+}
 /* หน้าต่างของขั้นตอนที่รอ (ครูกดบนทีวีได้เสมอ) */
 function pendingHTML(){
   const p = state.pending; if(!p) return '';
@@ -618,8 +696,9 @@ let teacherPeek = false;
 function render(){
   if(MODE !== 'TV') return;
   const board = document.getElementById('board');
-  if(!state){ board.innerHTML = headerHTML(); return; }
-  board.innerHTML = headerHTML() + teamHTML(team(other(view)),'far') + centerHTML() + teamHTML(team(view),'near');
+  if(!state){ board.classList.remove('arena-mode'); board.innerHTML = headerHTML(); return; }
+  board.classList.add('arena-mode');
+  board.innerHTML = arenaHTML();
   let ph = pendingHTML();
   if(teacherPeek && state.pending && state.pending.type==='choose'){
     const p = state.pending;
@@ -649,7 +728,7 @@ function startTimer(){
     if(!state || state.paused || state.winner) return;
     if(state.timeLeft > 0) state.timeLeft--;
     const el = document.getElementById('timer');
-    if(el){ el.textContent = '⏱ ' + fmtTime(state.timeLeft); el.classList.toggle('low', state.timeLeft<=300); }
+    if(el){ el.textContent = fmtTime(state.timeLeft); }
     if(state.timeLeft % 5 === 0) scheduleSync();
     if(state.timeLeft === 0 && !state.timeUpShown){ state.timeUpShown = true; showTimeUp(); }
     tickTurn();
@@ -798,6 +877,8 @@ function showRules(){
     <li>การ์ดโจมตี/สนับสนุน: ใช้เอฟเฟคได้ตอนอัญเชิญ (ต้องตอบคำถามเพิ่ม ${RULES.questionsPerEffect} ข้อให้ถูก)</li>
     <li>การ์ดป้องกัน (🛡): ไม่ใช้ตอนอัญเชิญ — เมื่อฝ่ายตรงข้ามใช้เอฟเฟคโจมตี ทีมเรามี ${COUNTER_SECONDS} วินาทีเลือกเปิดการ์ดป้องกันเพื่อยกเลิก · ใช้แล้วหมดสิทธิ์ใช้ซ้ำ</li>
     <li>ลงคำสมบูรณ์ (อัญเชิญ) ได้เทิร์นละ 1 ใบเท่านั้น</li>
+    <li>เอฟเฟคทำลายคำสมบูรณ์: ผู้ใช้เลือกการ์ดคู่แข่ง 1 ใบ การ์ดกลับเข้า Extra Deck ของเจ้าของ (อัญเชิญใหม่ได้) · ใช้ไม่ได้ถ้าคู่แข่งมีคำสมบูรณ์ 3 ใบแล้ว</li>
+    <li>เอฟเฟคล็อกช่อง: ล็อกช่องรากศัพท์ว่างของคู่แข่ง 1 ช่อง ตลอดเทิร์นถัดไปของคู่แข่ง · ล็อกติดกันสองเทิร์นไม่ได้</li>
     <li>ต้องวางรากศัพท์ให้ตรงช่องตามสูตรบนการ์ด: ช่อง 1 = รากศัพท์ตัวหน้า, ช่อง 2 = รากศัพท์ตัวหลัง (เช่น อุทกภัย = ช่อง 1 อุทก · ช่อง 2 ภัย) — วางสลับช่องจะอัญเชิญไม่ได้</li>
     <li>เวลาเทิร์นละ ${TURN_SECONDS} วินาที — หมดเวลาจะจบเทิร์นอัตโนมัติ (ถ้ากำลังตอบคำถามจะนับว่าตอบผิด)</li>
     <li>ทีมแรกที่มีคำสมบูรณ์ครบ ${RULES.winAtCompletedCards} ใบชนะ · ครบ ${RULES.timeLimitMinutes} นาทีให้นับคำสมบูรณ์</li></ol>

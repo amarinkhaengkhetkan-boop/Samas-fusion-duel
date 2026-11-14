@@ -32,8 +32,8 @@ window.GD = {
   "failedSummon": "roots_stay_fusion_right_lost_for_turn",
   "rootCardsConsumedToDiscard": true,
   "sandhiMagicReturnedToSharedPool": true,
-  "completedCardsPermanent": true,
-  "completedCardsImmuneToRemoval": true,
+  "completedCardsPermanent": false,
+  "completedCardsImmuneToRemoval": false,
   "teamExtraDeckSeparate": true,
   "sharedExtraDeck": false,
   "sharedSandhiMagic": true,
@@ -52,7 +52,14 @@ window.GD = {
   "handSharing": "team_shared",
   "duplicatesAllowedInMainDeck": true,
   "sameCompletedWordAcrossTeamsAllowed": true,
-  "duplicateSummonWithinSameTeam": "unspecified_disallow_until_teacher_confirms"
+  "duplicateSummonWithinSameTeam": "unspecified_disallow_until_teacher_confirms",
+  "turnTimeLimitSeconds": 45,
+  "counterWindowSeconds": 15,
+  "defenseCardsOneUse": true,
+  "destroyedCompletedReturnsToExtraDeck": true,
+  "destroyCompletedBlockedAtCount": 3,
+  "fusionLockTurns": 1,
+  "fusionLockNoConsecutive": true
  },
  "layout": {
   "orientation": "landscape",
@@ -504,12 +511,13 @@ window.GD = {
    "magic": null,
    "effect": {
     "name": "เกราะแห่งคุณธรรม",
-    "description": "ป้องกันรากศัพท์ฝ่ายตนจากเอฟเฟคฝ่ายตรงข้าม 1 ครั้งในรอบถัดไป",
+    "description": "ป้องกันรากศัพท์ฝ่ายตนจากเอฟเฟคฝ่ายตรงข้าม 1 ครั้ง — เลือกใช้เมื่อโดนความสามารถ",
     "op": "shield_roots",
     "params": {
      "charges": 1
     },
-    "requiresExtraQuestion": true
+    "requiresExtraQuestion": false,
+    "timing": "reaction_when_targeted"
    },
    "image": "assets/extra/C08.jpg",
    "release": "core",
@@ -529,12 +537,13 @@ window.GD = {
    "magic": null,
    "effect": {
     "name": "หลักแห่งความถูกต้อง",
-    "description": "ยกเลิกเอฟเฟคทำลายหรือบังคับทิ้ง 1 ครั้งในรอบถัดไป",
+    "description": "ยกเลิกเอฟเฟคทำลายหรือบังคับทิ้ง 1 ครั้ง — เลือกใช้เมื่อโดนความสามารถ",
     "op": "counter_destroy_discard",
     "params": {
      "charges": 1
     },
-    "requiresExtraQuestion": true
+    "requiresExtraQuestion": false,
+    "timing": "reaction_when_targeted"
    },
    "image": "assets/extra/C09.jpg",
    "release": "core",
@@ -577,12 +586,13 @@ window.GD = {
    "magic": null,
    "effect": {
     "name": "ปราการคชสาร",
-    "description": "ป้องกันรากศัพท์ที่วางเตรียมไว้ 1 ใบจากการทำลาย 1 ครั้งในรอบถัดไป",
+    "description": "ป้องกันรากศัพท์ที่วางเตรียมไว้จากการทำลาย 1 ครั้ง — เลือกใช้เมื่อโดนความสามารถ",
     "op": "shield_staged",
     "params": {
      "charges": 1
     },
-    "requiresExtraQuestion": true
+    "requiresExtraQuestion": false,
+    "timing": "reaction_when_targeted"
    },
    "image": "assets/extra/C11.jpg",
    "release": "core",
@@ -650,12 +660,13 @@ window.GD = {
    "magic": "vowel_sandhi",
    "effect": {
     "name": "บัญชาเทวราช",
-    "description": "ยกเลิกเอฟเฟคฝ่ายตรงข้าม 1 ครั้งในรอบถัดไป",
+    "description": "ยกเลิกเอฟเฟคฝ่ายตรงข้าม 1 ครั้ง — เลือกใช้เมื่อโดนความสามารถ",
     "op": "counter_effect",
     "params": {
      "charges": 1
     },
-    "requiresExtraQuestion": true
+    "requiresExtraQuestion": false,
+    "timing": "reaction_when_targeted"
    },
    "image": "assets/extra/C14.jpg",
    "release": "core",
@@ -675,13 +686,14 @@ window.GD = {
    "magic": "vowel_sandhi",
    "effect": {
     "name": "เกราะราชาคชสาร",
-    "description": "ป้องกันรากศัพท์ในมือ 1 ใบและบนสนาม 1 ใบจนจบเทิร์นถัดไป",
+    "description": "ป้องกันรากศัพท์ในมือและบนสนามจากเอฟเฟคฝ่ายตรงข้าม 1 ครั้ง — เลือกใช้เมื่อโดนความสามารถ",
     "op": "shield_hand_and_staged",
     "params": {
      "hand": 1,
      "staged": 1
     },
-    "requiresExtraQuestion": true
+    "requiresExtraQuestion": false,
+    "timing": "reaction_when_targeted"
    },
    "image": "assets/extra/C15.jpg",
    "release": "core",
@@ -700,16 +712,14 @@ window.GD = {
    ],
    "magic": "vowel_sandhi",
    "effect": {
-    "name": "ราชโองการสูงสุด",
-    "description": "เลือกรากศัพท์ที่ฝ่ายตรงข้ามวางไว้ 1 ใบส่งกลับสำรับแล้วสับ จากนั้นดูการ์ดบนสุดของสำรับตนเอง 1 ใบ",
-    "op": "return_staged_to_deck_and_peek",
-    "params": {
-     "peek": 1
-    },
+    "name": "ราชโองการทำลาย",
+    "description": "เลือกคำสมบูรณ์ของฝ่ายตรงข้าม 1 ใบ ส่งกลับเข้า Extra Deck ของเจ้าของ (ใช้ไม่ได้ถ้าฝ่ายตรงข้ามมีคำสมบูรณ์ 3 ใบ)",
+    "op": "destroy_opponent_completed",
+    "params": {},
     "requiresExtraQuestion": true
    },
    "image": null,
-   "release": "expansion",
+   "release": "core",
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false
   },
@@ -724,13 +734,14 @@ window.GD = {
    "magic": "vowel_sandhi",
    "effect": {
     "name": "ศาสตราแห่งวีรบุรุษ",
-    "description": "ป้องกันรากศัพท์ฝ่ายตนจากเอฟเฟค 1 ครั้ง เมื่อป้องกันสำเร็จจั่ว 1 ใบ",
+    "description": "ป้องกันรากศัพท์ฝ่ายตนจากเอฟเฟค 1 ครั้ง เมื่อป้องกันสำเร็จจั่ว 1 ใบ — เลือกใช้เมื่อโดนความสามารถ",
     "op": "shield_then_draw",
     "params": {
      "charges": 1,
      "draw": 1
     },
-    "requiresExtraQuestion": true
+    "requiresExtraQuestion": false,
+    "timing": "reaction_when_targeted"
    },
    "image": null,
    "release": "expansion",
@@ -797,13 +808,14 @@ window.GD = {
    "magic": "vowel_sandhi",
    "effect": {
     "name": "ม่านรัตติกาล",
-    "description": "ยกเลิกเอฟเฟคฝ่ายตรงข้าม 1 ครั้ง และสุ่มเปิดเผยรากศัพท์ในมือฝ่ายตรงข้าม 1 ใบ",
+    "description": "ยกเลิกเอฟเฟคฝ่ายตรงข้าม 1 ครั้ง และสุ่มเปิดเผยรากศัพท์ในมือฝ่ายตรงข้าม 1 ใบ — เลือกใช้เมื่อโดนความสามารถ",
     "op": "counter_and_reveal",
     "params": {
      "charges": 1,
      "reveal": 1
     },
-    "requiresExtraQuestion": true
+    "requiresExtraQuestion": false,
+    "timing": "reaction_when_targeted"
    },
    "image": null,
    "release": "expansion",
@@ -821,13 +833,14 @@ window.GD = {
    "magic": "vowel_sandhi",
    "effect": {
     "name": "สุริยคราสผนึกเวท",
-    "description": "ยกเลิกเอฟเฟคคำสมบูรณ์ที่ฝ่ายตรงข้ามเพิ่งอัญเชิญ 1 ครั้ง แล้วจั่ว 1 ใบ",
+    "description": "ยกเลิกเอฟเฟคคำสมบูรณ์ที่ฝ่ายตรงข้ามเพิ่งอัญเชิญ 1 ครั้ง แล้วจั่ว 1 ใบ — เลือกใช้เมื่อโดนความสามารถ",
     "op": "counter_new_summon_effect_and_draw",
     "params": {
      "charges": 1,
      "draw": 1
     },
-    "requiresExtraQuestion": true
+    "requiresExtraQuestion": false,
+    "timing": "reaction_when_targeted"
    },
    "image": "assets/extra/C21.jpg",
    "release": "core",
@@ -870,12 +883,13 @@ window.GD = {
    "magic": "vowel_sandhi",
    "effect": {
     "name": "มหาปราการ",
-    "description": "ป้องกันรากศัพท์ที่วางเตรียมไว้ทั้ง 2 ช่องจนจบเทิร์นถัดไป แล้วจั่ว 1 ใบ",
+    "description": "ป้องกันรากศัพท์ที่วางเตรียมไว้ทั้ง 2 ช่องจากเอฟเฟค 1 ครั้ง แล้วจั่ว 1 ใบ — เลือกใช้เมื่อโดนความสามารถ",
     "op": "shield_both_staged_and_draw",
     "params": {
      "draw": 1
     },
-    "requiresExtraQuestion": true
+    "requiresExtraQuestion": false,
+    "timing": "reaction_when_targeted"
    },
    "image": null,
    "release": "expansion",
@@ -893,13 +907,14 @@ window.GD = {
    "magic": "consonant_sandhi",
    "effect": {
     "name": "เขตศักดิ์สิทธิ์",
-    "description": "ยกเลิกการทำลายหรือบังคับทิ้งรากศัพท์ 1 ครั้ง แล้วนำรากศัพท์จากกองทิ้ง 1 ใบขึ้นมือ",
+    "description": "ยกเลิกการทำลายหรือบังคับทิ้งรากศัพท์ 1 ครั้ง แล้วนำรากศัพท์จากกองทิ้ง 1 ใบขึ้นมือ — เลือกใช้เมื่อโดนความสามารถ",
     "op": "counter_and_recover",
     "params": {
      "charges": 1,
      "recover": 1
     },
-    "requiresExtraQuestion": true
+    "requiresExtraQuestion": false,
+    "timing": "reaction_when_targeted"
    },
    "image": null,
    "release": "expansion",
@@ -929,6 +944,31 @@ window.GD = {
    "release": "expansion",
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false
+  },
+  {
+   "id": "C26",
+   "name": "ภูมินทร์",
+   "type": "sandhi",
+   "rootNames": [
+    "ภูมิ",
+    "อินทร์"
+   ],
+   "magic": "vowel_sandhi",
+   "effect": {
+    "name": "ปิดทางแผ่นดิน",
+    "description": "ล็อกช่องรากศัพท์ว่างของฝ่ายตรงข้าม 1 ช่อง ตลอดเทิร์นถัดไปของฝ่ายตรงข้าม (ล็อกติดกันสองเทิร์นไม่ได้)",
+    "op": "lock_opponent_fusion_slot",
+    "params": {
+     "turns": 1
+    },
+    "requiresExtraQuestion": true
+   },
+   "image": null,
+   "imgClass": null,
+   "release": "core",
+   "reviewStatus": "needs_linguistic_review",
+   "enabledForGradedPlay": false,
+   "note": "การ์ดใหม่ (เพิ่ม 2026-11-14) — ครูตรวจชื่อคำ/สูตร/ชนิดสนธิ"
   }
  ],
  "magicCards": [
