@@ -173,15 +173,19 @@ function act(a, k, x){
   render();
 }
 
-const sameRoots = (c, names) => (c.rootNames[0]===names[0] && c.rootNames[1]===names[1]) || (c.rootNames[0]===names[1] && c.rootNames[1]===names[0]);
+/* ต้องวางให้ตรงช่อง: ช่อง 1 = รากศัพท์ตัวแรก, ช่อง 2 = รากศัพท์ตัวที่สอง ตามสูตรบนการ์ด */
+const sameRoots = (c, names) => c.rootNames[0]===names[0] && c.rootNames[1]===names[1];
+const swappedRoots = (c, names) => c.rootNames[0]===names[1] && c.rootNames[1]===names[0];
 function trySummon(t){
-  if(state.summoned){ say(`อัญเชิญได้เทิร์นละ ${RULES.summonsPerTurn} ครั้ง`, 'bad'); return render(); }
+  if(state.summoned){ say(`เทิร์นนี้อัญเชิญคำสมบูรณ์ไปแล้ว — ลงคำสมบูรณ์ได้เทิร์นละ ${RULES.summonsPerTurn} ใบเท่านั้น`, 'bad'); return render(); }
   if(state.summonLost){ say('เทิร์นนี้เสียสิทธิ์อัญเชิญแล้ว (ตอบคำถามผิด)', 'bad'); return render(); }
   const mats = filled(t.fusionZone);
   if(mats.length < RULES.fusionSlotsPerTeam){ say('วางรากศัพท์ใน Fusion Zone ให้ครบ 2 ช่องก่อน', 'bad'); return render(); }
   const names = mats.map(c=>c.name);
   const cands = t.extraDeck.filter(x => sameRoots(compOf(x), names));
   if(!cands.length){
+    const sw = t.extraDeck.find(x => swappedRoots(compOf(x), names));
+    if(sw){ say(`วางรากศัพท์ผิดช่อง — อัญเชิญไม่ได้ · ตรวจลำดับ ช่อง 1 / ช่อง 2 ตามสูตรการ์ดอีกครั้ง`, 'bad'); return render(); }   // ไม่บอกชื่อคำ เพื่อไม่เฉลยคำถาม
     const done = filled(t.completedZone).some(x => sameRoots(compOf(x), names));
     const inOther = team(other(t.key)).extraDeck.some(x => sameRoots(compOf(x), names));
     say(done ? `${names.join(' + ')} — ทีมนี้อัญเชิญคำนี้ไปแล้ว` : inOther ? `${names.join(' + ')} มีใน Extra Deck ${other(t.key)} เท่านั้น — ห้ามใช้การ์ดข้ามทีม!` : `${names.join(' + ')} ไม่ตรงกับคำใดใน Extra Deck ${t.key}`, 'bad');
@@ -551,7 +555,9 @@ function centerHTML(){
   const at = active();
   const casting = !!(state.teamA.sandhiSlot || state.teamB.sandhiSlot);
   return `<section class="center-magic-area">
-    <div class="turn-box"><div class="turn">รอบที่ ${state.round} · ตาของ <span class="${at.key}">ทีม ${at.key} ${esc(at.name)}</span></div>
+    <div class="turn-box"><div class="turn">รอบที่ ${state.round} · ตาของ <span class="${at.key}">ทีม ${at.key} ${esc(at.name)}</span>
+      <span class="bigtime ${(state.turnLeft??TURN_SECONDS)<=10?'low':''}" id="tturn2">⌛ ${state.turnLeft ?? TURN_SECONDS}</span></div>
+      <div class="tbar"><i id="tbar" style="width:${100*(state.turnLeft??TURN_SECONDS)/TURN_SECONDS}%"></i></div>
       <div class="phases">${PHASES.map(([k,l])=>`<span class="${state.phase===k?'on':''}">${l}</span>`).join('')}</div>
       <div class="msg ${msg.tone}">${esc(msg.text)}</div></div>
     <div class="sandhi-zone">
@@ -663,6 +669,8 @@ function tickTurn(){
   state.turnLeft = Math.max(0, state.turnLeft - 1);
   const el = document.getElementById('tturn');
   if(el){ el.textContent = `⌛ ${state.turnLeft} วิ`; el.classList.toggle('low', state.turnLeft <= 10); }
+  const e2 = document.getElementById('tturn2'); if(e2){ e2.textContent = `⌛ ${state.turnLeft}`; e2.classList.toggle('low', state.turnLeft <= 10); }
+  const e3 = document.getElementById('tbar'); if(e3){ e3.style.width = (100*state.turnLeft/TURN_SECONDS) + '%'; e3.classList.toggle('low', state.turnLeft <= 10); }
   if(state.turnLeft <= 10 || state.turnLeft % 5 === 0) scheduleSync();
   if(state.turnLeft === 0) turnTimeout();
 }
@@ -789,6 +797,8 @@ function showRules(){
     <li>ต้องตอบคำถามแบบเลือกตอบถูก ${RULES.questionsPerSummon} ข้อ จึงอัญเชิญสำเร็จ · ตอบผิด: รากศัพท์ค้างในช่องและเสียสิทธิ์อัญเชิญในเทิร์นนั้น</li>
     <li>การ์ดโจมตี/สนับสนุน: ใช้เอฟเฟคได้ตอนอัญเชิญ (ต้องตอบคำถามเพิ่ม ${RULES.questionsPerEffect} ข้อให้ถูก)</li>
     <li>การ์ดป้องกัน (🛡): ไม่ใช้ตอนอัญเชิญ — เมื่อฝ่ายตรงข้ามใช้เอฟเฟคโจมตี ทีมเรามี ${COUNTER_SECONDS} วินาทีเลือกเปิดการ์ดป้องกันเพื่อยกเลิก · ใช้แล้วหมดสิทธิ์ใช้ซ้ำ</li>
+    <li>ลงคำสมบูรณ์ (อัญเชิญ) ได้เทิร์นละ 1 ใบเท่านั้น</li>
+    <li>ต้องวางรากศัพท์ให้ตรงช่องตามสูตรบนการ์ด: ช่อง 1 = รากศัพท์ตัวหน้า, ช่อง 2 = รากศัพท์ตัวหลัง (เช่น อุทกภัย = ช่อง 1 อุทก · ช่อง 2 ภัย) — วางสลับช่องจะอัญเชิญไม่ได้</li>
     <li>เวลาเทิร์นละ ${TURN_SECONDS} วินาที — หมดเวลาจะจบเทิร์นอัตโนมัติ (ถ้ากำลังตอบคำถามจะนับว่าตอบผิด)</li>
     <li>ทีมแรกที่มีคำสมบูรณ์ครบ ${RULES.winAtCompletedCards} ใบชนะ · ครบ ${RULES.timeLimitMinutes} นาทีให้นับคำสมบูรณ์</li></ol>
     <div class="mfoot"><button class="btn" onclick="closeModal()">เข้าใจแล้ว</button></div>`);

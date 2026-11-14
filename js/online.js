@@ -6,7 +6,7 @@
      · private/A, B    = การ์ดในมือของแต่ละทีม (กฎฐานข้อมูลให้อ่านได้เฉพาะเจ้าของที่นั่ง + โฮสต์)
    - ผู้เล่นส่งคำสั่งเข้า actions/ แล้วโฮสต์เป็นผู้ตรวจและดำเนินการ
    ===================================================================== */
-const APP_VER = '20261114a';
+const APP_VER = '20261114c';
 let AUTH = null, DB = null, USER = null;
 let ROOM = null, ROOM_PW = '', IS_HOST = false, MYSEAT = null, ROOMINFO = null;
 let SEATS = {}, READY = {}, NAMES = {};
@@ -358,6 +358,9 @@ function renderPhone(){
   let html = head(S.win ? (S.win===ME?'🏆 ชนะ!':'จบเกม') : myTurn ? '▶ ตาของคุณ' : `รอทีม ${S.turn}`, myTurn && !S.win ? 'go' : '');
   const smallComp = (arr, cu=[]) => arr.map((cid,i)=> cid ? `<div class="card click ${cu[i]?'used':''}" data-m="z:${cid}">${compFaceHTML(COMP[cid])}${isDefense(COMP[cid])?`<span class="dtag ${cu[i]?'off':''}">${cu[i]?'ใช้แล้ว':'🛡'}</span>`:''}</div>` : `<div class="slot cslot"><span></span></div>`).join('');
   const revealed = o.h.filter(c=>c[2]);
+  html += `<div class="ph-timer ${myTurn?'me':''}"><div class="lbl">${S.win?'จบเกม':myTurn?'⏳ เวลาเทิร์นของเรา':'⏳ เวลาเทิร์นทีม '+S.turn}</div>
+    <div class="num" id="ptt2">${S.tt ?? ''}</div><div class="tbar"><i id="ptbar" style="width:${100*(S.tt??45)/45}%"></i></div>
+    ${myTurn && !S.win ? `<div class="zhint">${S.sm?'✔ อัญเชิญแล้วในเทิร์นนี้ (ได้เทิร์นละ 1 ใบ) — กดจบเทิร์นได้เลย':'อัญเชิญคำสมบูรณ์ได้ 1 ใบ · หมดเวลาจะจบเทิร์นอัตโนมัติ'}</div>`:''}</div>`;
   html += `<section class="ph-side opp ${OK}">
     <div class="ph-tt"><span class="tm">ทีม ${OK}</span>${esc(o.n)} <span class="r">★ ${o.c.filter(Boolean).length}/4</span></div>
     <div class="ph-xrow"><div class="card pile click" data-m="xopp" style="--cw:40px">${backFaceHTML('X')}<span class="count">${o.x}</span></div><span class="zhint">Extra Deck ${OK} · แตะเพื่อดูคำที่ยังอัญเชิญได้</span></div>
@@ -424,7 +427,12 @@ setInterval(() => {                                    // นับถอยห�
   const el = Math.floor((Date.now() - lastStateAt) / 1000);
   const p = S.p, a = document.getElementById('ptt'), b = document.getElementById('pct');
   if(b && p && p.type === 'counter') b.textContent = Math.max(0, p.left - el);
-  if(a && S.tt != null && !(p && p.type === 'counter')){ const v = Math.max(0, S.tt - el); a.textContent = `⌛ ${v} วิ`; a.classList.toggle('low', v <= 10); }
+  if(S.tt != null && !(p && p.type === 'counter') && !(p && p.type === 'question' && p.revealed)){
+    const v = Math.max(0, S.tt - el);
+    if(a){ a.textContent = `⌛ ${v} วิ`; a.classList.toggle('low', v <= 10); }
+    const n = document.getElementById('ptt2'); if(n){ n.textContent = v; n.parentElement.classList.toggle('low', v <= 10); }
+    const bar = document.getElementById('ptbar'); if(bar) bar.style.width = (100*v/45) + '%';
+  }
 }, 1000);
 /* หน้าต่างดู Extra Deck / การ์ด: แยกจากสนาม ไม่ถูกวาดใหม่ตอนข้อมูลเกมอัปเดต (จึงไม่กระตุก) · แตะพื้นที่ว่างรอบ ๆ เพื่อปิด */
 let ovEl = null;
