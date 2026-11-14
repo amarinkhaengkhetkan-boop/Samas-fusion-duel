@@ -352,3 +352,11 @@ html.ov-open .ph-ovbox{touch-action:pan-y}
 
 body.phone #pend{display:none}   /* เครื่องที่เป็นผู้เล่น (โฮสต์เล่นทีม A) ไม่แสดงหน้าต่างคำถามของจอกลาง */
 .btn.qo:disabled{opacity:1;cursor:default}
+
+.dtag{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);z-index:3;font-family:Mitr;font-size:clamp(9px,1.3vh,13px);white-space:nowrap;
+  padding:0 6px;border-radius:99px;background:#3ccf8e;color:#062a1a;border:1.5px solid #fff;pointer-events:none}
+.dtag.off{background:#555;color:#ddd}
+.card.used>.face{filter:grayscale(.85) brightness(.6)}
+.ptt{color:#fff;background:#ffffff26;padding:0 8px;border-radius:99px}
+.ptt.low,#tturn.low{background:#ff5a78;color:#fff}
+.mgrid figcaption small{font-family:Sarabun;color:#d8cff2;font-size:11px}

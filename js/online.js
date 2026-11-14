@@ -6,7 +6,7 @@
      · private/A, B    = การ์ดในมือของแต่ละทีม (กฎฐานข้อมูลให้อ่านได้เฉพาะเจ้าของที่นั่ง + โฮสต์)
    - ผู้เล่นส่งคำสั่งเข้า actions/ แล้วโฮสต์เป็นผู้ตรวจและดำเนินการ
    ===================================================================== */
-const APP_VER = '20261113d';
+const APP_VER = '20261114a';
 let AUTH = null, DB = null, USER = null;
 let ROOM = null, ROOM_PW = '', IS_HOST = false, MYSEAT = null, ROOMINFO = null;
 let SEATS = {}, READY = {}, NAMES = {};
@@ -257,10 +257,10 @@ function showRoomPanel(){
 function snapshot(){
   if(!state) return {none:true};
   const T = t => ({ n:t.name, h:t.hand.map(c=>[c.uid,c.name,c.revealedUntil?1:0]), f:t.fusionZone.map(c=>c?[c.uid,c.name]:null),
-    s:t.sandhiSlot?(t.sandhiSlot.mtype||'vowel_sandhi'):0, c:t.completedZone.map(x=>x?x.cid:null), x:t.extraDeck.length, xc:t.extraDeck.map(x=>x.cid), m:t.mainDeck.length,
+    s:t.sandhiSlot?(t.sandhiSlot.mtype||'vowel_sandhi'):0, c:t.completedZone.map(x=>x?x.cid:null), cu:t.completedZone.map(x=>x&&x.used?1:0), x:t.extraDeck.length, xc:t.extraDeck.map(x=>x.cid), m:t.mainDeck.length,
     d:t.discard.length, dt:t.discard.length?t.discard[t.discard.length-1].name:null, df:t.defenses.map(d=>DEF_LABEL[d.kind]) });
   return { turn:state.turn, round:state.round, phase:state.phase, hd:state.hasDrawn?1:0, sm:state.summoned||state.summonLost?1:0,
-    win:state.winner, tl:state.timeLeft, pz:state.paused?1:0, sz:Object.fromEntries(MTYPES.map(mt=>[mt,pileCount(mt)])),
+    win:state.winner, tl:state.timeLeft, tt:state.turnLeft, pz:state.paused?1:0, sz:Object.fromEntries(MTYPES.map(mt=>[mt,pileCount(mt)])),
     msg:msg.text, tone:msg.tone, p:state.pending, A:T(state.teamA), B:T(state.teamB) };
 }
 /* สนามสาธารณะ: ปิดชื่อการ์ดในมือ (ยกเว้นใบที่ถูกเปิดเผย) และตัวเลือกที่เป็นความลับ */
@@ -297,6 +297,7 @@ function handleRemote(m){
   switch(d.a){
     case 'choose': if(p && p.type==='choose' && p.team===tk) answerChoose(+d.i); return;
     case 'offer':  if(p && p.type==='offer' && p.team===tk) answerOffer(!!d.use); return;
+    case 'counter': if(p && p.type==='counter' && p.team===tk) answerCounter(d.i == null ? -1 : +d.i); return;   // เฉพาะทีมที่ถูกโจมตี
     case 'answer': if(p && p.type==='question' && p.team===tk && !p.revealed) answerQuestion('pick', +d.i); return;   // ตอบได้เฉพาะทีมผู้อัญเชิญ
   }
   if(state.winner) return;
@@ -350,18 +351,18 @@ function renderPhone(){
   const el = document.getElementById('phone');
   if(!ME){ el.innerHTML = `<div class="ph-wait">คุณเป็นผู้ชมในห้องนี้ (ไม่มีที่นั่ง)<br><br><button class="btn ghost" onclick="leaveRoom()">ออกจากห้อง</button></div>`; return; }
   const head = (st, cls) => `<div class="ph-head ${ME}"><span class="tn">ทีม ${ME}</span><span>${S&&S[ME]?esc(S[ME].n):''}</span><span class="st ${cls||''}">${st}</span>
-    ${S&&!S.none?`<span class="sub">★ ทีม A ${S.A.c.filter(Boolean).length}/4 · ทีม B ${S.B.c.filter(Boolean).length}/4 · ⏱ ${fmtTime(S.tl)}${S.pz?' ⏸':''} · รอบ ${S.round} · ห้อง ${ROOM}</span>`:''}</div>`;
+    ${S&&!S.none?`<span class="sub"><b class="ptt" id="ptt">⌛ ${S.tt ?? ''} วิ</b> · ★ ทีม A ${S.A.c.filter(Boolean).length}/4 · ทีม B ${S.B.c.filter(Boolean).length}/4 · ⏱ ${fmtTime(S.tl)}${S.pz?' ⏸':''} · รอบ ${S.round} · ห้อง ${ROOM}</span>`:''}</div>`;
   const diag = `<div class="zhint" style="text-align:center;margin-top:16px">เวอร์ชัน ${APP_VER} · ห้อง ${ROOM} · ${phoneConn==='ok'?'🟢 ออนไลน์':'🔴 ขาดการเชื่อมต่อ'} · ${esc(myName())} · <a href="#" onclick="leaveRoom();return false">ออกจากห้อง</a></div>`;
   if(!S || S.none){ el.innerHTML = head('รอเริ่มเกม') + `<div class="ph-wait">รอให้ทั้งสองทีมกดพร้อม…</div>` + diag; return; }
   const me = S[ME], o = S[other(ME)], OK = other(ME), myTurn = S.turn === ME, p = S.p;
   let html = head(S.win ? (S.win===ME?'🏆 ชนะ!':'จบเกม') : myTurn ? '▶ ตาของคุณ' : `รอทีม ${S.turn}`, myTurn && !S.win ? 'go' : '');
-  const smallComp = arr => arr.map(cid=> cid ? `<div class="card click" data-m="z:${cid}">${compFaceHTML(COMP[cid])}</div>` : `<div class="slot cslot"><span></span></div>`).join('');
+  const smallComp = (arr, cu=[]) => arr.map((cid,i)=> cid ? `<div class="card click ${cu[i]?'used':''}" data-m="z:${cid}">${compFaceHTML(COMP[cid])}${isDefense(COMP[cid])?`<span class="dtag ${cu[i]?'off':''}">${cu[i]?'ใช้แล้ว':'🛡'}</span>`:''}</div>` : `<div class="slot cslot"><span></span></div>`).join('');
   const revealed = o.h.filter(c=>c[2]);
   html += `<section class="ph-side opp ${OK}">
     <div class="ph-tt"><span class="tm">ทีม ${OK}</span>${esc(o.n)} <span class="r">★ ${o.c.filter(Boolean).length}/4</span></div>
     <div class="ph-xrow"><div class="card pile click" data-m="xopp" style="--cw:40px">${backFaceHTML('X')}<span class="count">${o.x}</span></div><span class="zhint">Extra Deck ${OK} · แตะเพื่อดูคำที่ยังอัญเชิญได้</span></div>
     <div class="ph-backs">${o.h.map(c=> c[2] ? `<div class="card" style="--cw:30px">${rootFaceHTML(c[1])}<span class="tag">👁</span></div>` : `<div class="card" style="--cw:30px">${backFaceHTML(OK)}</div>`).join('')}<span class="zhint">มือ ${o.h.length}${revealed.length?` · เปิดเผย ${revealed.map(c=>esc(c[1])).join(', ')}`:''}</span></div>
-    <div class="ph-lbl">คำสมบูรณ์ ${OK}</div><div class="ph-row cmp">${smallComp(o.c)}</div>
+    <div class="ph-lbl">คำสมบูรณ์ ${OK}</div><div class="ph-row cmp">${smallComp(o.c, o.cu)}</div>
     <div class="ph-lbl">รากศัพท์ที่วางเตรียม ${OK}</div><div class="ph-row fus">${o.f.map(c=> c ? `<div class="card">${rootFaceHTML(c[1])}</div>` : `<div class="slot">ว่าง</div>`).join('')}${o.s?`<div class="card mcard">${magicFaceHTML(o.s)}</div>`:''}</div>
     ${o.df.length?`<div class="zhint">${o.df.join(' ')}</div>`:''}
   </section>`;
@@ -376,7 +377,7 @@ function renderPhone(){
     <div class="ph-row fus big">${me.f.map((c,i)=> c ? `<div class="card ${me.f.every(Boolean)?'linked':''}" data-m="un${i}">${rootFaceHTML(c[1])}</div>` : `<div class="slot ${phoneSel?'target':''}" data-m="pl${i}">ช่อง ${i+1}</div>`).join('')}
       ${me.s ? `<div class="card mcard" data-m="uncast">${magicFaceHTML(me.s)}</div>` : `<div class="slot mslot" data-m="castmenu">แตะเพื่อ<br>ร่ายเวท<br>สนธิ</div>`}</div>
     <div class="ph-lbl">Extra Deck ${ME} และคำสมบูรณ์ของเรา ★ ${me.c.filter(Boolean).length}/4</div>
-    <div class="ph-row cmp"><div class="card pile click xpile" data-m="xme">${backFaceHTML('X')}<span class="count">${me.x}</span></div>${smallComp(me.c)}</div>
+    <div class="ph-row cmp"><div class="card pile click xpile" data-m="xme">${backFaceHTML('X')}<span class="count">${me.x}</span></div>${smallComp(me.c, me.cu)}</div>
     <div class="zhint">สำรับ ${me.m} · กองทิ้ง ${me.d}${me.dt?` (บนสุด: ${esc(me.dt)})`:''} · Extra Deck ${me.x}${me.df.length?` · ${me.df.join(' ')}`:''}</div>
     <div class="ph-tt" style="margin-top:8px"><span class="tm">มือทีม ${ME}</span>${me.h.length} ใบ ${phoneSel?'<span class="r">เลือกแล้ว — แตะช่องว่างด้านบน</span>':'<span class="r">แตะการ์ดเพื่อเลือก</span>'}</div>
     <div class="ph-hand">${me.h.map(c=>`<div class="card ${phoneSel===c[0]?'sel':''}" data-m="h${c[0]}">${rootFaceHTML(c[1])}${c[2]?'<span class="tag">👁</span>':''}</div>`).join('') || '<span class="zhint">ไม่มีการ์ด</span>'}</div>
@@ -394,6 +395,12 @@ function renderPhone(){
     else if(p.type === 'offer' && p.team === ME){ const c = COMP[p.cid];
       sheet = `<h4>ใช้เอฟเฟค “${esc(c.effect.name)}” ?</h4><div class="zhint">${esc(c.effect.description)}</div>
         <div class="ph-act"><button class="btn ghost" data-m="offer0">ไม่ใช้</button><button class="btn summon" data-m="offer1">ใช้ (ตอบคำถาม)</button></div>`; }
+    else if(p.type === 'counter' && p.team === ME)
+      sheet = `<h4>🛡 ${esc(p.title)}</h4><div class="zhint">แตะการ์ดป้องกันเพื่อใช้ (ใช้แล้วหมดสิทธิ์) · เหลือ <b id="pct">${p.left}</b> วินาที</div>
+        <div class="mgrid">${p.opts.map((cid,i)=>`<figure><div class="card pick" data-m="ct${i}">${compFaceHTML(COMP[cid])}</div><figcaption>${esc(COMP[cid].name)}<br><small>${esc(DEFENSE[COMP[cid].effect.op].label)}</small></figcaption></figure>`).join('')}</div>
+        <div class="ph-act"><button class="btn ghost" data-m="ctnone">ไม่ป้องกัน</button></div>`;
+    else if(p.type === 'counter')
+      sheet = `<h4>⚔️ รอทีม ${p.team} ตัดสินใจป้องกัน…</h4><div class="zhint">“${esc(p.atk)}” · เหลือ <b id="pct">${p.left}</b> วินาที</div>`;
     else if(p.type === 'choose' && p.team === ME)
       sheet = `<h4>${esc(p.title)}</h4><div class="zhint">${esc(p.sub)}</div><div class="mgrid">${p.opts.map((o,i)=>`<div class="card pick" data-m="ch${i}">${optFace(o)}</div>`).join('')}</div>`;
     else sheet = `<h4>รอทีม ${p.team}…</h4><div class="zhint">${esc(p.title||'')}</div>`;
@@ -412,6 +419,13 @@ function renderPhone(){
   if(out !== lastPhoneHTML){ el.innerHTML = out; lastPhoneHTML = out; window.scrollTo(0, y); }
 }
 let lastPhoneHTML = '';
+setInterval(() => {                                    // นับถอยหลังบนมือถือระหว่างรอข้อมูลรอบถัดไป
+  if(!S || S.none || S.win || S.pz) return;
+  const el = Math.floor((Date.now() - lastStateAt) / 1000);
+  const p = S.p, a = document.getElementById('ptt'), b = document.getElementById('pct');
+  if(b && p && p.type === 'counter') b.textContent = Math.max(0, p.left - el);
+  if(a && S.tt != null && !(p && p.type === 'counter')){ const v = Math.max(0, S.tt - el); a.textContent = `⌛ ${v} วิ`; a.classList.toggle('low', v <= 10); }
+}, 1000);
 /* หน้าต่างดู Extra Deck / การ์ด: แยกจากสนาม ไม่ถูกวาดใหม่ตอนข้อมูลเกมอัปเดต (จึงไม่กระตุก) · แตะพื้นที่ว่างรอบ ๆ เพื่อปิด */
 let ovEl = null;
 function renderOverlay(){
@@ -458,6 +472,8 @@ function phoneClick(e){
   if(v==='castmenu'){ castMenu = !castMenu; phoneSel = null; return renderPhone(); }
   if(v.startsWith('cast:')){ castMenu = false; pEmit({a:'cast', m:v.slice(5)}); return renderPhone(); }
   if(v.startsWith('qa')) return pEmit({a:'answer', i:+v.slice(2)});
+  if(v==='ctnone') return pEmit({a:'counter', i:null});
+  if(v.startsWith('ct')) return pEmit({a:'counter', i:+v.slice(2)});
   if(v[0]==='h'){ castMenu = false; phoneSel = phoneSel === v.slice(1) ? null : v.slice(1); return renderPhone(); }
   if(v.startsWith('pl')){ if(!phoneSel) return; pEmit({a:'place', u:phoneSel, s:+v[2]}); phoneSel = null; return renderPhone(); }
   if(v==='uncast') return pEmit({a:'uncast'});

@@ -96,7 +96,7 @@ const compOf = x => COMP[x.cid];
 
 function startTurn(){
   const t = active();
-  Object.assign(state, {hasDrawn:false, summoned:false, summonLost:false, selected:null, phase:'DRAW'});
+  Object.assign(state, {hasDrawn:false, summoned:false, summonLost:false, selected:null, phase:'DRAW', turnLeft:TURN_SECONDS});
   if(state.turnNo === 1 && RULES.firstTeamSkipsFirstDraw){ state.hasDrawn = true; state.phase = 'PREPARATION'; say(`${t.name} เริ่มก่อน — ทีมแรกงดจั่วในเทิร์นแรก`); }
   else say(`ตาของ ${t.name} — จั่วการ์ด ${RULES.drawPerTurn} ใบ`);
   render();
@@ -268,6 +268,7 @@ function commitSummon(k, xUid){
   setTimeout(() => {                                           // ไปขั้นเอฟเฟคเสมอ แม้แอนิเมชันไม่จบ (เช่น แท็บอยู่เบื้องหลัง)
     if(state !== game || state.pending) return;
     if(state.winner) return showWin(t);
+    if(isDefense(c)){ say(`🛡 “${c.name}” เป็นการ์ดป้องกัน — พร้อมใช้เมื่อถูกฝ่ายตรงข้ามโจมตี (ใช้ได้ 1 ครั้ง)`, 'good'); state.phase = 'PREPARATION'; return render(); }
     offerEffect(t, c);
   }, 1100);
 }
@@ -299,6 +300,32 @@ function answerChoose(idx){
 function done(text, tone=''){ state.pending = null; pendingCb = null; if(text) say(text, tone); state.phase='PREPARATION'; render(); }
 
 /* ---------- เอฟเฟค ---------- */
+/* การ์ดป้องกัน: ไม่ใช้ตอนอัญเชิญ แต่วางพร้อมใช้ใน Completed Word Zone
+   เมื่อฝ่ายตรงข้ามใช้เอฟเฟคโจมตี เจ้าของเลือกเปิดใช้เพื่อยกเลิกได้ — ใช้แล้วหมดสิทธิ์ (ใช้ได้ครั้งเดียวต่อใบ) */
+const DEFENSE = {
+  shield_roots:                       {blocks:'any',            label:'ป้องกันเอฟเฟคที่เล็งรากศัพท์ของเรา'},
+  counter_destroy_discard:            {blocks:'destroyDiscard', label:'ยกเลิกการทำลายหรือบังคับทิ้ง'},
+  shield_staged:                      {blocks:'stagedDestroy',  label:'กันการทำลายรากศัพท์ที่วางเตรียม'},
+  counter_effect:                     {blocks:'any',            label:'ยกเลิกเอฟเฟคฝ่ายตรงข้าม'},
+  shield_hand_and_staged:             {blocks:'any',            label:'ป้องกันรากศัพท์ในมือและบนสนาม'},
+  shield_then_draw:                   {blocks:'any', bonus:'draw',    label:'ป้องกัน แล้วจั่ว 1 ใบ'},
+  counter_and_reveal:                 {blocks:'any', bonus:'reveal',  label:'ยกเลิก แล้วเปิดเผยมือฝ่ายตรงข้าม 1 ใบ'},
+  counter_new_summon_effect_and_draw: {blocks:'any', bonus:'draw',    label:'ยกเลิกเอฟเฟคคำที่เพิ่งอัญเชิญ แล้วจั่ว 1 ใบ'},
+  shield_both_staged_and_draw:        {blocks:'staged', bonus:'draw', label:'กันรากศัพท์ที่วางเตรียมทั้ง 2 ช่อง แล้วจั่ว 1 ใบ'},
+  counter_and_recover:                {blocks:'destroyDiscard', bonus:'recover', label:'ยกเลิกการทำลาย/บังคับทิ้ง แล้วนำรากศัพท์จากกองทิ้งขึ้นมือ 1 ใบ'}
+};
+const isDefense = c => !!DEFENSE[c.effect.op];
+function defenseFits(c, info){
+  const b = DEFENSE[c.effect.op].blocks;
+  if(b === 'any') return true;
+  if(b === 'destroyDiscard') return info.cat === 'destroy' || info.cat === 'discard';
+  if(b === 'stagedDestroy') return info.target === 'staged' && info.cat === 'destroy';
+  if(b === 'staged') return info.target === 'staged';
+  return false;
+}
+const readyDefenses = (t, info) => filled(t.completedZone).filter(x => !x.used && isDefense(compOf(x)) && (!info || defenseFits(compOf(x), info)));
+const COUNTER_SECONDS = 15;
+const TURN_SECONDS = 45;
 function addDef(t, kind, charges, span, src, extra={}){ t.defenses.push({kind, charges, until: state.turnNo + span, src, ...extra}); }
 const DEF_ORDER = ['shieldStagedAll','shieldStaged','shieldStagedOne','shieldHandOne','counterDestroyDiscard','shieldRoots','counterAny'];
 function defApplies(d, info){
@@ -312,15 +339,30 @@ function defApplies(d, info){
 }
 function hostile(tgt, info, hasTarget, apply){
   if(!hasTarget()) return done(`เอฟเฟค “${info.name}” ไม่มีเป้าหมาย — ไม่เกิดผล`, 'bad');
-  for(const kind of DEF_ORDER){
-    const d = tgt.defenses.find(d => d.kind === kind && defApplies(d, info));
-    if(d){
-      if(d.charges != null && --d.charges <= 0) tgt.defenses.splice(tgt.defenses.indexOf(d), 1);
-      const extra = d.onBlockDraw && drawCards(tgt, d.onBlockDraw) ? ` และจั่ว ${d.onBlockDraw} ใบ` : '';
-      return done(`🛡 ${tgt.name} ป้องกันเอฟเฟค “${info.name}” ด้วย ${d.src}${extra}!`, 'good');
-    }
+  const ready = readyDefenses(tgt, info);
+  if(!ready.length) return apply();
+  /* เปิดช่วงให้ฝ่ายถูกโจมตีตัดสินใจเคาน์เตอร์ */
+  state.pending = {type:'counter', team:tgt.key, attacker:other(tgt.key), atk:info.name,
+    title:`ทีม ${other(tgt.key)} ใช้ “${info.name}” — จะป้องกันไหม?`, opts: ready.map(x => x.cid), left: COUNTER_SECONDS};
+  pendingCb = {tgt, ready, apply, info};
+  say(`⚔️ ทีม ${other(tgt.key)} ใช้ “${info.name}” — รอทีม ${tgt.key} ตัดสินใจป้องกัน`);
+  render();
+}
+function answerCounter(idx){
+  const p = state && state.pending; if(!p || p.type !== 'counter') return;
+  const {tgt, ready, apply, info} = pendingCb;
+  state.pending = null; pendingCb = null;
+  if(!(idx >= 0 && idx < ready.length)){ say(`ทีม ${tgt.key} ไม่ป้องกัน`); return apply(); }
+  const x = ready[idx], c = compOf(x), d = DEFENSE[c.effect.op];
+  x.used = true;                                                     // ใช้แล้วหมดสิทธิ์
+  let extra = '';
+  if(d.bonus === 'draw' && drawCards(tgt, 1)) extra = ' และจั่ว 1 ใบ';
+  if(d.bonus === 'reveal'){ const o = team(other(tgt.key)); if(o.hand.length){ const v = pick(o.hand); v.revealedUntil = state.turnNo + 2; extra = ` และเปิดเผย “${v.name}” ในมือทีม ${o.key}`; } }
+  if(d.bonus === 'recover' && tgt.discard.length){
+    say(`🛡 ทีม ${tgt.key} ใช้ “${c.name}” ยกเลิก “${info.name}” สำเร็จ!`, 'good');
+    return recover(tgt, r => done(`🛡 ทีม ${tgt.key} ใช้ “${c.name}” ยกเลิก “${info.name}” สำเร็จ! · ${r}`, 'good'));
   }
-  apply();
+  done(`🛡 ทีม ${tgt.key} ใช้ “${c.name}” ยกเลิก “${info.name}” สำเร็จ!${extra}`, 'good');
 }
 const stagedOf = t => t.fusionZone.map((c,i)=>c?{c,i}:null).filter(Boolean);
 const lookTop = (t, n) => t.mainDeck.slice(-n).reverse();
@@ -463,7 +505,7 @@ function teamHTML(t, side){
   const isAct = state.turn === t.key, sel = isAct && !!state.selected;
   const done = filled(t.completedZone).length, linked = t.fusionZone.every(Boolean);
   const completed = t.completedZone.map((x,i)=> x
-    ? `<div class="card click" ${da('completed',t.key,i)} data-slot="${i}" data-uid="${x.uid}">${compFaceHTML(compOf(x))}</div>`
+    ? `<div class="card click ${x.used?'used':''}" ${da('completed',t.key,i)} data-slot="${i}" data-uid="${x.uid}">${compFaceHTML(compOf(x))}${isDefense(compOf(x))?`<span class="dtag ${x.used?'off':''}">${x.used?'ใช้แล้ว':'🛡 พร้อม'}</span>`:''}</div>`
     : `<div class="slot cslot" data-slot="${i}"><span>${i+1}</span></div>`).join('');
   const fusion = t.fusionZone.map((c,i)=> c
     ? `<div class="card ${isAct?'click':''} ${linked?'linked':''}" ${da('fusion',t.key,i)} data-uid="${c.uid}">${rootFaceHTML(c.name)}</div>`
@@ -494,7 +536,7 @@ function headerHTML(){
   const sA = state ? filled(state.teamA.completedZone).length : 0, sB = state ? filled(state.teamB.completedZone).length : 0;
   return `<header class="logo-bar">
     <div class="scoreboard"><span class="A">ทีม A ★ ${sA}/4</span><span class="B">ทีม B ★ ${sB}/4</span>
-      ${state?`<span class="timer ${state.timeLeft<=300?'low':''}" id="timer" data-ui="pause">⏱ ${fmtTime(state.timeLeft)}${state.paused?' ⏸':''}</span>`:''}</div>
+      ${state?`<span class="timer ${state.turnLeft<=10?'low':''}" id="tturn" data-ui="pause">⌛ ${state.turnLeft ?? TURN_SECONDS} วิ</span><span class="timer ${state.timeLeft<=300?'low':''}" id="timer" data-ui="pause">⏱ ${fmtTime(state.timeLeft)}${state.paused?' ⏸':''}</span>`:''}</div>
     <div class="logo">${LOTUS}<div><div class="l1">SAMAS CODEBREAKERS</div><div class="l2">FUSION DUEL</div></div>${LOTUS}</div>
     <div class="tools">
       ${ROOM?`<button class="tbtn" data-ui="join">🔑 ห้อง ${ROOM}</button>`:''}
@@ -547,6 +589,14 @@ function pendingHTML(){
       <p class="note">ทีม ${tk} เลือกว่าจะใช้เอฟเฟคหรือไม่${onPhone?' (กดบนมือถือได้)':''} — ต้องตอบคำถามเพิ่ม ${RULES.questionsPerEffect} ข้อให้ถูก</p></div></div>
       <div class="mfoot"><button class="btn ghost" data-p="skip">ไม่ใช้เอฟเฟค</button><button class="btn summon" data-p="use">ตอบคำถามเพื่อใช้เอฟเฟค</button></div></div></div>`;
   }
+  if(p.type === 'counter'){
+    return `<div class="overlay"><div class="modal"><h2>${esc(p.title)}</h2>
+      <p>ทีม ${tk} มีการ์ดป้องกันที่ใช้ได้ · เหลือเวลา <b id="ctime">${p.left}</b> วินาที (หมดเวลา = ไม่ป้องกัน)</p>
+      ${ROOM && onPhone ? `<div class="qbox">📱 ทีม ${tk} กำลังตัดสินใจบนมือถือ…</div>` : ''}
+      <div class="mgrid">${p.opts.map((cid,i)=>`<figure><div class="card ${ROOM&&onPhone?'':'pick'}" ${ROOM&&onPhone?'':`data-p="k${i}"`}>${compFaceHTML(COMP[cid])}</div><figcaption>${esc(COMP[cid].name)}<br><small>${esc(DEFENSE[COMP[cid].effect.op].label)}</small></figcaption></figure>`).join('')}</div>
+      ${ROOM && onPhone ? '' : `<div class="mfoot"><button class="btn ghost" data-p="knone">ไม่ป้องกัน</button></div>`}
+    </div></div>`;
+  }
   if(p.type === 'choose'){
     const secret = onPhone && p.opts.some(o => o.root) ;
     return `<div class="overlay"><div class="modal"><h2>${esc(p.title)}</h2><p>${esc(p.sub)}</p>
@@ -578,6 +628,8 @@ document.getElementById('pend').addEventListener('click', e => {
   const b = e.target.closest('[data-p]'); if(!b) return;
   const v = b.dataset.p;
   if(v[0]==='q'){ const p = state && state.pending; if(ROOM && p && phoneOn[p.team]) return; return answerQuestion('pick', +v.slice(1)); }
+  if(v==='knone') return answerCounter(-1);
+  if(v[0]==='k') return answerCounter(+v.slice(1));
   if(v==='use') return answerOffer(true);
   if(v==='skip') return answerOffer(false);
   if(v==='peek'){ teacherPeek = true; return render(); }
@@ -594,7 +646,35 @@ function startTimer(){
     if(el){ el.textContent = '⏱ ' + fmtTime(state.timeLeft); el.classList.toggle('low', state.timeLeft<=300); }
     if(state.timeLeft % 5 === 0) scheduleSync();
     if(state.timeLeft === 0 && !state.timeUpShown){ state.timeUpShown = true; showTimeUp(); }
+    tickTurn();
   }, 1000);
+}
+/* เวลาต่อเทิร์น 45 วินาที — หยุดเดินระหว่างรอฝ่ายตรงข้ามตัดสินใจป้องกัน (มีเวลานับของตัวเอง 15 วินาที) */
+function tickTurn(){
+  const p = state.pending;
+  if(p && p.type === 'counter'){
+    p.left = Math.max(0, (p.left ?? COUNTER_SECONDS) - 1);
+    const el = document.getElementById('ctime'); if(el) el.textContent = p.left;
+    if(p.left === 0) answerCounter(-1); else scheduleSync();
+    return;
+  }
+  if(p && p.type === 'question' && p.revealed) return;               // กำลังแสดงเฉลย
+  if(state.turnLeft == null) state.turnLeft = TURN_SECONDS;
+  state.turnLeft = Math.max(0, state.turnLeft - 1);
+  const el = document.getElementById('tturn');
+  if(el){ el.textContent = `⌛ ${state.turnLeft} วิ`; el.classList.toggle('low', state.turnLeft <= 10); }
+  if(state.turnLeft <= 10 || state.turnLeft % 5 === 0) scheduleSync();
+  if(state.turnLeft === 0) turnTimeout();
+}
+function turnTimeout(){
+  const p = state.pending, t = active();
+  if(p){
+    if(p.type === 'question'){ state.pending = null; const cb = pendingCb; pendingCb = null; say(`⌛ หมดเวลา — ทีม ${t.key} ตอบไม่ทัน`, 'bad'); cb.onFail(); }
+    else if(p.type === 'offer'){ state.pending = null; pendingCb = null; }
+    else if(p.type === 'choose'){ return answerChoose(Math.floor(Math.random() * p.opts.length)); }   // เลือกแบบสุ่มแทน แล้วนับเวลาต่อ
+  }
+  endTurn();
+  say(`⌛ ${t.name} หมดเวลา ${TURN_SECONDS} วินาที · ${msg.text}`, 'bad'); render();
 }
 function showTimeUp(){
   const a = filled(state.teamA.completedZone).length, b = filled(state.teamB.completedZone).length;
@@ -678,7 +758,7 @@ function showZoomComp(c, k){
   openModal(`<div class="zoomwrap"><div class="card">${compFaceHTML(c)}</div><div class="zoominfo">
     <h3>${esc(c.name)}</h3><p><span class="pill ${c.type}">${c.type==='samas'?'คำสมาส':'คำสนธิ'}</span>${c.release==='expansion'?'<span class="pill exp">ส่วนขยาย</span>':''}${k?` ทีม ${k}`:''}</p>
     <p>วัตถุดิบ: ${esc(c.rootNames.join(' + '))}${c.magic?' + เวท'+magicName(c.magic):''}</p>
-    <div class="eff"><b>${esc(c.effect.name)}</b><br>${esc(c.effect.description)}</div>
+    <div class="eff"><b>${esc(c.effect.name)}</b><br>${esc(c.effect.description)}${isDefense(c)?`<br><span class="pill samas">การ์ดป้องกัน</span> ใช้ตอบโต้เมื่อถูกโจมตี · ใช้ได้ 1 ครั้ง`:''}</div>
     ${c.artName && c.artName!==c.name?`<p class="note">ชื่อบนภาพการ์ด: ${esc(c.artName)}</p>`:''}</div></div>
     <div class="mfoot"><button class="btn" onclick="closeModal()">ปิด</button></div>`);
 }
@@ -707,7 +787,9 @@ function showRules(){
     <li>ลำดับเทิร์น: จั่ว → เตรียม → ฟิวชัน → ตอบคำถาม → เอฟเฟค → จบเทิร์น</li>
     <li>วางรากศัพท์ 2 ใบ (คำสนธิต้องร่ายเวทสนธิให้ถูกชนิด: สระสนธิ / พยัญชนะสนธิ / นิคหิตสนธิ) แล้วกด “⚡ อัญเชิญ” ได้เทิร์นละ ${RULES.summonsPerTurn} ครั้ง</li>
     <li>ต้องตอบคำถามแบบเลือกตอบถูก ${RULES.questionsPerSummon} ข้อ จึงอัญเชิญสำเร็จ · ตอบผิด: รากศัพท์ค้างในช่องและเสียสิทธิ์อัญเชิญในเทิร์นนั้น</li>
-    <li>ใช้เอฟเฟคได้ 1 ครั้งต่อการอัญเชิญ ต้องตอบคำถามเพิ่ม ${RULES.questionsPerEffect} ข้อให้ถูก</li>
+    <li>การ์ดโจมตี/สนับสนุน: ใช้เอฟเฟคได้ตอนอัญเชิญ (ต้องตอบคำถามเพิ่ม ${RULES.questionsPerEffect} ข้อให้ถูก)</li>
+    <li>การ์ดป้องกัน (🛡): ไม่ใช้ตอนอัญเชิญ — เมื่อฝ่ายตรงข้ามใช้เอฟเฟคโจมตี ทีมเรามี ${COUNTER_SECONDS} วินาทีเลือกเปิดการ์ดป้องกันเพื่อยกเลิก · ใช้แล้วหมดสิทธิ์ใช้ซ้ำ</li>
+    <li>เวลาเทิร์นละ ${TURN_SECONDS} วินาที — หมดเวลาจะจบเทิร์นอัตโนมัติ (ถ้ากำลังตอบคำถามจะนับว่าตอบผิด)</li>
     <li>ทีมแรกที่มีคำสมบูรณ์ครบ ${RULES.winAtCompletedCards} ใบชนะ · ครบ ${RULES.timeLimitMinutes} นาทีให้นับคำสมบูรณ์</li></ol>
     <div class="mfoot"><button class="btn" onclick="closeModal()">เข้าใจแล้ว</button></div>`);
 }
