@@ -470,3 +470,8 @@ body.phone #phone{background:repeating-linear-gradient(60deg,#ffffff06 0 2px,tra
 .ph-hand.fan{--cw:min(23vw,118px)}
 .ph-hand.fan.n5,.ph-hand.fan.n6{--cw:min(22vw,110px)}
 .ph-zoom h4{font-family:Mitr;font-size:22px;color:#ffe9a3}
+
+.ring.locked{border-color:#ffffffaa!important;background:repeating-linear-gradient(45deg,#00000066 0 8px,#ffffff14 8px 16px)}
+.ring .lockico{font-size:clamp(14px,2.4vh,26px);color:#fff;text-align:center;line-height:1.1}
+#phone .slot.locked{background:repeating-linear-gradient(45deg,#00000066 0 8px,#ffffff14 8px 16px);color:#fff;font-family:Mitr;font-size:13px;text-align:center}
+.face.slotface{background:repeating-linear-gradient(45deg,#2a0f5c 0 10px,#3a1a7a 10px 20px);border:3px dashed #f6cf6a;color:#fff}
