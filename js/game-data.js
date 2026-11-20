@@ -351,7 +351,10 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "อุทกภัย",
-   "imgClass": "img-C01"
+   "imgClass": "img-C01",
+   "reading": "อุ-ทก-กะ-ไพ",
+   "meaning": "ภัยจากน้ำ เช่น น้ำท่วม",
+   "explain": "คำสมาส: อุทก + ภัย ต่อกันโดยไม่เปลี่ยนรูป แปลจากหลังไปหน้า → ภัยจากน้ำ เช่น น้ำท่วม"
   },
   {
    "id": "C02",
@@ -374,7 +377,10 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "อัคคีภัย",
-   "imgClass": "img-C02"
+   "imgClass": "img-C02",
+   "reading": "อัก-คี-ไพ",
+   "meaning": "ภัยจากไฟ ไฟไหม้",
+   "explain": "คำสมาส: อัคคี + ภัย ต่อกันโดยไม่เปลี่ยนรูป แปลจากหลังไปหน้า → ภัยจากไฟ ไฟไหม้"
   },
   {
    "id": "C03",
@@ -397,7 +403,10 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "วาตภัย",
-   "imgClass": "img-C03"
+   "imgClass": "img-C03",
+   "reading": "วา-ตะ-ไพ",
+   "meaning": "ภัยจากลม เช่น พายุ",
+   "explain": "คำสมาส: วาต + ภัย ต่อกันโดยไม่เปลี่ยนรูป แปลจากหลังไปหน้า → ภัยจากลม เช่น พายุ"
   },
   {
    "id": "C04",
@@ -422,7 +431,10 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "วิทยาศาสตร์",
-   "imgClass": "img-C04"
+   "imgClass": "img-C04",
+   "reading": "วิด-ทะ-ยา-สาด",
+   "meaning": "วิชาความรู้ที่ได้จากการสังเกตและทดลองอย่างมีระบบ",
+   "explain": "คำสมาส: วิทยา + ศาสตร์ ต่อกันโดยไม่เปลี่ยนรูป แปลจากหลังไปหน้า → วิชาความรู้ที่ได้จากการสังเกตและทดลองอย่างมีระบบ"
   },
   {
    "id": "C05",
@@ -447,7 +459,10 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "ชีววิทยา",
-   "imgClass": "img-C05"
+   "imgClass": "img-C05",
+   "reading": "ชี-วะ-วิด-ทะ-ยา",
+   "meaning": "วิชาว่าด้วยสิ่งมีชีวิต",
+   "explain": "คำสมาส: ชีว + วิทยา ต่อกันโดยไม่เปลี่ยนรูป แปลจากหลังไปหน้า → วิชาว่าด้วยสิ่งมีชีวิต"
   },
   {
    "id": "C06",
@@ -473,7 +488,10 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "จิตวิทยา",
-   "imgClass": "img-C06"
+   "imgClass": "img-C06",
+   "reading": "จิด-ตะ-วิด-ทะ-ยา",
+   "meaning": "วิชาว่าด้วยจิตใจและพฤติกรรม",
+   "explain": "คำสมาส: จิต + วิทยา ต่อกันโดยไม่เปลี่ยนรูป แปลจากหลังไปหน้า → วิชาว่าด้วยจิตใจและพฤติกรรม"
   },
   {
    "id": "C07",
@@ -498,7 +516,10 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "ภูมิศาสตร์",
-   "imgClass": "img-C07"
+   "imgClass": "img-C07",
+   "reading": "พู-มิ-สาด",
+   "meaning": "วิชาว่าด้วยแผ่นดินและลักษณะพื้นที่",
+   "explain": "คำสมาส: ภูมิ + ศาสตร์ ต่อกันโดยไม่เปลี่ยนรูป แปลจากหลังไปหน้า → วิชาว่าด้วยแผ่นดินและลักษณะพื้นที่"
   },
   {
    "id": "C08",
@@ -524,7 +545,10 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "คุณธรรม",
-   "imgClass": "img-C08"
+   "imgClass": "img-C08",
+   "reading": "คุน-นะ-ทำ",
+   "meaning": "สภาพคุณงามความดี",
+   "explain": "คำสมาส: คุณ + ธรรม ต่อกันโดยไม่เปลี่ยนรูป แปลจากหลังไปหน้า → สภาพคุณงามความดี"
   },
   {
    "id": "C09",
@@ -550,7 +574,10 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "จริยธรรม",
-   "imgClass": "img-C09"
+   "imgClass": "img-C09",
+   "reading": "จะ-ริ-ยะ-ทำ",
+   "meaning": "ธรรมที่เป็นข้อประพฤติปฏิบัติ",
+   "explain": "คำสมาส: จริย + ธรรม ต่อกันโดยไม่เปลี่ยนรูป แปลจากหลังไปหน้า → ธรรมที่เป็นข้อประพฤติปฏิบัติ"
   },
   {
    "id": "C10",
@@ -573,7 +600,10 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "มหาภัย",
-   "imgClass": "img-C10"
+   "imgClass": "img-C10",
+   "reading": "มะ-หา-ไพ",
+   "meaning": "ภัยใหญ่หลวง",
+   "explain": "คำสมาส: มหา + ภัย ต่อกันโดยไม่เปลี่ยนรูป แปลจากหลังไปหน้า → ภัยใหญ่หลวง"
   },
   {
    "id": "C11",
@@ -599,7 +629,10 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "มหาคช",
-   "imgClass": "img-C11"
+   "imgClass": "img-C11",
+   "reading": "มะ-หา-คด",
+   "meaning": "ช้างใหญ่",
+   "explain": "คำสมาส: มหา + คช ต่อกันโดยไม่เปลี่ยนรูป แปลจากหลังไปหน้า → ช้างใหญ่"
   },
   {
    "id": "C12",
@@ -622,7 +655,11 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "มหรรณพ",
-   "imgClass": "img-C12"
+   "imgClass": "img-C12",
+   "reading": "มะ-หัน-นบ",
+   "meaning": "ห้วงน้ำใหญ่ ทะเล มหาสมุทร",
+   "change": "อา + อะ → อะ",
+   "explain": "คำสนธิ (สระสนธิ): มหา + อรรณพ เสียงกลมกลืนกัน อา + อะ → อะ → มหรรณพ = ห้วงน้ำใหญ่ ทะเล มหาสมุทร"
   },
   {
    "id": "C13",
@@ -647,7 +684,11 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "นรินทร์",
-   "imgClass": "img-C13"
+   "imgClass": "img-C13",
+   "reading": "นะ-ริน",
+   "meaning": "ผู้เป็นใหญ่ในหมู่คน คือพระราชา",
+   "change": "อะ + อิ → อิ",
+   "explain": "คำสนธิ (สระสนธิ): นร + อินทร์ เสียงกลมกลืนกัน อะ + อิ → อิ → นรินทร์ = ผู้เป็นใหญ่ในหมู่คน คือพระราชา"
   },
   {
    "id": "C14",
@@ -673,7 +714,11 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "เทวินทร์",
-   "imgClass": "img-C14"
+   "imgClass": "img-C14",
+   "reading": "เท-วิน",
+   "meaning": "ผู้เป็นใหญ่ในหมู่เทวดา คือพระอินทร์",
+   "change": "อะ + อิ → อิ",
+   "explain": "คำสนธิ (สระสนธิ): เทว + อินทร์ เสียงกลมกลืนกัน อะ + อิ → อิ → เทวินทร์ = ผู้เป็นใหญ่ในหมู่เทวดา คือพระอินทร์"
   },
   {
    "id": "C15",
@@ -700,7 +745,11 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "คเชนทร์",
-   "imgClass": "img-C15"
+   "imgClass": "img-C15",
+   "reading": "คะ-ชิน",
+   "meaning": "ช้างที่เป็นใหญ่ พญาช้าง",
+   "change": "อะ + อิ → อิ",
+   "explain": "คำสนธิ (สระสนธิ): คช + อินทร์ เสียงกลมกลืนกัน อะ + อิ → อิ → คชินทร์ = ช้างที่เป็นใหญ่ พญาช้าง"
   },
   {
    "id": "C16",
@@ -721,7 +770,11 @@ window.GD = {
    "image": null,
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "enabledForGradedPlay": false
+   "enabledForGradedPlay": false,
+   "reading": "มะ-หิน",
+   "meaning": "ผู้เป็นใหญ่ยิ่ง",
+   "change": "อา + อิ → อิ",
+   "explain": "คำสนธิ (สระสนธิ): มหา + อินทร์ เสียงกลมกลืนกัน อา + อิ → อิ → มหินทร์ = ผู้เป็นใหญ่ยิ่ง"
   },
   {
    "id": "C17",
@@ -746,7 +799,11 @@ window.GD = {
    "image": null,
    "release": "expansion",
    "reviewStatus": "needs_linguistic_review",
-   "enabledForGradedPlay": false
+   "enabledForGradedPlay": false,
+   "reading": "รา-เมด-สวน",
+   "meaning": "พระรามผู้เป็นเจ้า",
+   "change": "อะ + อี → เอ",
+   "explain": "คำสนธิ (สระสนธิ): ราม + อีศวร เสียงกลมกลืนกัน อะ + อี → เอ → ราเมศวร = พระรามผู้เป็นเจ้า"
   },
   {
    "id": "C18",
@@ -771,7 +828,11 @@ window.GD = {
    "image": null,
    "release": "expansion",
    "reviewStatus": "needs_linguistic_review",
-   "enabledForGradedPlay": false
+   "enabledForGradedPlay": false,
+   "reading": "นะ-เรด-สวน",
+   "meaning": "ผู้เป็นใหญ่ในหมู่คน พระราชา",
+   "change": "อะ + อี → เอ",
+   "explain": "คำสนธิ (สระสนธิ): นร + อีศวร เสียงกลมกลืนกัน อะ + อี → เอ → นเรศวร = ผู้เป็นใหญ่ในหมู่คน พระราชา"
   },
   {
    "id": "C19",
@@ -795,7 +856,11 @@ window.GD = {
    "image": null,
    "release": "expansion",
    "reviewStatus": "needs_linguistic_review",
-   "enabledForGradedPlay": false
+   "enabledForGradedPlay": false,
+   "reading": "สุ-ริ-โย-ไท",
+   "meaning": "ดวงอาทิตย์ขึ้น",
+   "change": "อะ + อุ → โอ",
+   "explain": "คำสนธิ (สระสนธิ): สุริย + อุทัย เสียงกลมกลืนกัน อะ + อุ → โอ → สุริโยทัย = ดวงอาทิตย์ขึ้น"
   },
   {
    "id": "C20",
@@ -820,7 +885,11 @@ window.GD = {
    "image": null,
    "release": "expansion",
    "reviewStatus": "needs_linguistic_review",
-   "enabledForGradedPlay": false
+   "enabledForGradedPlay": false,
+   "reading": "จัน-ทฺรุ-ปะ-รา-คา",
+   "meaning": "จันทรคราส ดวงจันทร์ถูกบดบัง",
+   "change": "อะ + อุ → อุ",
+   "explain": "คำสนธิ (สระสนธิ): จันทร + อุปราคา เสียงกลมกลืนกัน อะ + อุ → อุ → จันทรุปราคา = จันทรคราส ดวงจันทร์ถูกบดบัง"
   },
   {
    "id": "C21",
@@ -847,7 +916,11 @@ window.GD = {
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
    "artName": "สุริยุปราคา",
-   "imgClass": "img-C21"
+   "imgClass": "img-C21",
+   "reading": "สุ-ริ-ยุ-ปะ-รา-คา",
+   "meaning": "สุริยคราส ดวงอาทิตย์ถูกบดบัง",
+   "change": "อะ + อุ → อุ",
+   "explain": "คำสนธิ (สระสนธิ): สุริย + อุปราคา เสียงกลมกลืนกัน อะ + อุ → อุ → สุริยุปราคา = สุริยคราส ดวงอาทิตย์ถูกบดบัง"
   },
   {
    "id": "C22",
@@ -870,7 +943,11 @@ window.GD = {
    "image": null,
    "release": "expansion",
    "reviewStatus": "needs_linguistic_review",
-   "enabledForGradedPlay": false
+   "enabledForGradedPlay": false,
+   "reading": "มะ-หัด-สะ-จัน",
+   "meaning": "น่าพิศวงอย่างยิ่ง",
+   "change": "อา + อะ → อะ",
+   "explain": "คำสนธิ (สระสนธิ): มหา + อัศจรรย์ เสียงกลมกลืนกัน อา + อะ → อะ → มหัศจรรย์ = น่าพิศวงอย่างยิ่ง"
   },
   {
    "id": "C23",
@@ -894,7 +971,11 @@ window.GD = {
    "image": null,
    "release": "expansion",
    "reviewStatus": "needs_linguistic_review",
-   "enabledForGradedPlay": false
+   "enabledForGradedPlay": false,
+   "reading": "มะ-โห-ลาน",
+   "meaning": "ใหญ่โตยิ่ง",
+   "change": "อา + โอ → โอ",
+   "explain": "คำสนธิ (สระสนธิ): มหา + โอฬาร เสียงกลมกลืนกัน อา + โอ → โอ → มโหฬาร = ใหญ่โตยิ่ง"
   },
   {
    "id": "C24",
@@ -919,7 +1000,11 @@ window.GD = {
    "image": null,
    "release": "expansion",
    "reviewStatus": "needs_linguistic_review",
-   "enabledForGradedPlay": false
+   "enabledForGradedPlay": false,
+   "reading": "นิ-ระ-ไพ",
+   "meaning": "ปราศจากภัย ปลอดภัย",
+   "change": "ส → ร",
+   "explain": "คำสนธิ (พยัญชนะสนธิ): นิสฺ + ภย เสียง ส ท้ายคำหน้าเปลี่ยนเป็น ร → นิรภัย = ปราศจากภัย ปลอดภัย"
   },
   {
    "id": "C25",
@@ -943,7 +1028,11 @@ window.GD = {
    "image": null,
    "release": "expansion",
    "reviewStatus": "needs_linguistic_review",
-   "enabledForGradedPlay": false
+   "enabledForGradedPlay": false,
+   "reading": "สัง-คม",
+   "meaning": "การไปร่วมกัน หมู่คน",
+   "change": "นิคหิต → ง",
+   "explain": "คำสนธิ (นิคหิตสนธิ): สํ + คม เสียงกลมกลืนกัน นิคหิต → ง → สังคม = การไปร่วมกัน หมู่คน"
   },
   {
    "id": "C26",
@@ -968,7 +1057,11 @@ window.GD = {
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
    "enabledForGradedPlay": false,
-   "note": "การ์ดใหม่ (เพิ่ม 2026-11-14) — ครูตรวจชื่อคำ/สูตร/ชนิดสนธิ"
+   "note": "การ์ดใหม่ (เพิ่ม 2026-11-14) — ครูตรวจชื่อคำ/สูตร/ชนิดสนธิ",
+   "reading": "พู-มิน",
+   "meaning": "ผู้เป็นใหญ่แห่งแผ่นดิน พระราชา",
+   "change": "อิ + อิ → อิ",
+   "explain": "คำสนธิ (สระสนธิ): ภูมิ + อินทร์ เสียงกลมกลืนกัน อิ + อิ → อิ → ภูมินทร์ = ผู้เป็นใหญ่แห่งแผ่นดิน พระราชา"
   }
  ],
  "magicCards": [

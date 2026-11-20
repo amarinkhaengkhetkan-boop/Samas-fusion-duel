@@ -82,12 +82,13 @@ function makeTeam(key, name, exp){
   for(let i=0;i<RULES.openingHandSize;i++) t.hand.push(t.mainDeck.pop());
   return t;
 }
-function newGame(nameA, nameB, exp){
+function newGame(nameA, nameB, exp, drill=false){
   uidN = 0;
   state = { turn:'A', turnNo:1, round:1, phase:'DRAW', hasDrawn:false, summoned:false, summonLost:false,
     selected:null, winner:null, exp, timeLeft:RULES.timeLimitMinutes*60, paused:false, timeUpShown:false, pending:null, uidN:0,
     sandhiZone:{ piles: Object.fromEntries(GD.magicCards.map(m => [m.type, Array.from({length:m.copies||SANDHI_POOL}, (_,i)=>({uid:m.id+'-'+(i+1), kind:'magic', mtype:m.type}))])) },
-    teamA: makeTeam('A', nameA, exp), teamB: makeTeam('B', nameB, exp) };
+    teamA: makeTeam('A', nameA, exp), teamB: makeTeam('B', nameB, exp),
+    drill: !!drill, gid: Date.now().toString(36), startedAt: Date.now(), room: (typeof ROOM !== 'undefined' && ROOM) || null, log: [], history: [] };
   pendingCb = null; closeModal(); startTurn(); startTimer();
 }
 const team = k => k === 'A' ? state.teamA : state.teamB;
@@ -100,6 +101,7 @@ function startTurn(){
   Object.assign(state, {hasDrawn:false, summoned:false, summonLost:false, selected:null, phase:'DRAW', turnLeft:TURN_SECONDS});
   if(state.turnNo === 1 && RULES.firstTeamSkipsFirstDraw){ state.hasDrawn = true; state.phase = 'PREPARATION'; say(`${t.name} เริ่มก่อน — ทีมแรกงดจั่วในเทิร์นแรก`); }
   else say(`ตาของ ${t.name} — จั่วการ์ด ${RULES.drawPerTurn} ใบ`);
+  if(typeof onTurnStart === 'function') onTurnStart();
   render();
 }
 function returnMagic(t){ if(t.sandhiSlot){ const mt = t.sandhiSlot.mtype || 'vowel_sandhi'; (state.sandhiZone.piles[mt] = state.sandhiZone.piles[mt] || []).push(t.sandhiSlot); t.sandhiSlot = null; } }
@@ -215,22 +217,53 @@ function mcq(correct, pool){
 }
 const activeComps = () => GD.completedCards.filter(c => inRelease(c, state.exp));
 const activeRoots = () => GD.roots.filter(r => inRelease(r, state.exp));
-function meaningQ(n){ return {q:`รากศัพท์ “${n}” หมายความว่าอะไร?`, a:ROOT[n].meaning, ...mcq(ROOT[n].meaning, activeRoots().map(r=>r.meaning))}; }
+/* ---------- คลังคำถาม: เน้นทั้งความจำ ความเข้าใจ และกระบวนการสร้างคำ ---------- */
+const QT_LABEL = {combine:'รวมรากศัพท์เป็นคำ', type:'จำแนกสมาส/สนธิ', rootMeaning:'ความหมายรากศัพท์', wordMeaning:'ความหมายของคำ',
+  process:'กระบวนการกลมกลืนเสียง', magicType:'ชนิดของสนธิ', why:'เหตุผลการจำแนก', parts:'แยกรากศัพท์'};
+const VOWEL_CHANGES = ['อะ + อิ → อิ','อะ + อิ → เอ','อะ + อุ → อุ','อะ + อุ → โอ','อา + อะ → อะ','อา + อะ → อา','อา + โอ → โอ','อะ + อี → เอ','อิ + อิ → อิ','อา + อิ → อิ'];
+const CONS_CHANGES = ['นิคหิต → ง','นิคหิต → ม','นิคหิต → น','ส → ร','ส → โอ'];
+const SAMAS_WHY = 'นำคำบาลีสันสกฤตมาต่อกันโดยไม่เปลี่ยนรูป', SANDHI_WHY = 'มีการเชื่อมและกลมกลืนเสียงระหว่างคำ';
+const WHY_POOL = [SAMAS_WHY, SANDHI_WHY, 'มีคำไทยแท้ประกอบอยู่ในคำ', 'นำคำที่มีความหมายซ้ำกันมาซ้อนกัน'];
+const cExplain = c => c.explain || `${c.type==='samas'?'คำสมาส':'คำสนธิ'}: ${c.rootNames.join(' + ')} → ${c.name}`;
+const Q = (qt, c, q, a, pool, extra={}) => ({qt, cid:c.id, q, a, ex:cExplain(c), ...(Array.isArray(pool) ? mcq(a, pool) : pool), ...extra});
+function meaningQ(n, c){ return Q('rootMeaning', c, `รากศัพท์ “${n}” หมายความว่าอะไร?`, ROOT[n].meaning, activeRoots().map(r=>r.meaning)); }
+function wordMeaningQ(c){ return c.meaning ? Q('wordMeaning', c, `คำว่า “${c.name}” หมายความว่าอะไร?`, c.meaning, GD.completedCards.map(x=>x.meaning)) : null; }
+function processQ(c){
+  if(!c.change) return null;
+  const pool = c.magic === 'vowel_sandhi' ? VOWEL_CHANGES : CONS_CHANGES;
+  return Q('process', c, `${c.rootNames.join(' + ')} → “${c.name}” ตรงรอยต่อเกิดการเปลี่ยนเสียงแบบใด?`, c.change, pool);
+}
+function magicTypeQ(c){
+  const names = MTYPES.map(magicName), a = magicName(c.magic);
+  return Q('magicType', c, `คำว่า “${c.name}” เป็นสนธิชนิดใด?`, a, {opts:names, ci:names.indexOf(a)});
+}
+function whyQ(c){
+  const a = c.type === 'samas' ? SAMAS_WHY : SANDHI_WHY;
+  return Q('why', c, `เพราะเหตุใด “${c.name}” จึงเป็น${c.type==='samas'?'คำสมาส':'คำสนธิ'}?`, a, WHY_POOL);
+}
+function typeQ(c){
+  const a = c.type==='samas'?'คำสมาส':'คำสนธิ';
+  return Q('type', c, `คำว่า “${c.name}” เป็นคำสมาสหรือคำสนธิ?`, a, {opts:['คำสมาส','คำสนธิ'], ci: c.type==='samas'?0:1});
+}
 function summonQuestions(c, names, magic){
-  const q1 = {q:`รวม ${names.join(' + ')}${magic?' + เวท'+magicName(magic):''} ได้คำว่าอะไร?`, a:c.name, cid:c.id, ...mcq(c.name, activeComps().map(x=>x.name))};
-  const typeQ = {q:`คำว่า “${c.name}” เป็นคำสมาสหรือคำสนธิ?`, a: c.type==='samas'?'คำสมาส':'คำสนธิ', opts:['คำสมาส','คำสนธิ'], ci: c.type==='samas'?0:1};
-  return [q1, pick([typeQ, ...c.rootNames.map(meaningQ)])].slice(0, RULES.questionsPerSummon);
+  const q1 = Q('combine', c, `รวม ${names.join(' + ')}${magic?' + เวท'+magicName(magic):''} ได้คำว่าอะไร?`, c.name, activeComps().map(x=>x.name));
+  const pool = (c.type === 'samas'
+    ? [typeQ(c), whyQ(c), wordMeaningQ(c), ...c.rootNames.map(n => meaningQ(n, c))]
+    : [processQ(c), processQ(c), magicTypeQ(c), whyQ(c), wordMeaningQ(c)]).filter(Boolean);
+  const qs = [q1, pick(pool)].slice(0, RULES.questionsPerSummon); qs.kind = 'summon'; return qs;
 }
 function effectQuestion(c){
   const j = x => x.rootNames.join(' + ');
-  const rq = {q:`คำว่า “${c.name}” ประกอบด้วยรากศัพท์ใดบ้าง?`, a:j(c), ...mcq(j(c), activeComps().map(j))};
-  return [pick([rq, ...c.rootNames.map(meaningQ)])].slice(0, RULES.questionsPerEffect);
+  const rq = Q('parts', c, `คำว่า “${c.name}” ประกอบด้วยรากศัพท์ใดบ้าง?`, j(c), activeComps().map(j));
+  const pool = [rq, wordMeaningQ(c), ...c.rootNames.map(n => meaningQ(n, c)), c.type === 'sandhi' ? processQ(c) : whyQ(c)].filter(Boolean);
+  const qs = [pick(pool)].slice(0, RULES.questionsPerEffect); qs.kind = 'effect'; return qs;
 }
 /* คำถามแบบเลือกตอบ: ทีมที่ตอบเลือกบนมือถือ หรือครูกดแทนบนจอกลาง — ระบบตรวจคำตอบเอง */
 function askQuestions(teamKey, title, qs, onPass, onFail, i=0){
   const q = qs[i];
   state.pending = {type:'question', team:teamKey, title, i, n:qs.length, q:q.q, opts:q.opts, cid:q.cid||null, revealed:false, picked:null};
-  pendingCb = {qs, onPass, onFail, title, teamKey, i, ci:q.ci, a:q.a};
+  pendingCb = {qs, onPass, onFail, title, teamKey, i, ci:q.ci, a:q.a, ex:q.ex, qt:q.qt, kind:qs.kind||'summon', at:Date.now()};
+  if(typeof assignAnswerer === 'function') assignAnswerer(state.pending);
   render();
 }
 function answerQuestion(kind, idx){
@@ -238,9 +271,10 @@ function answerQuestion(kind, idx){
   const cb = pendingCb;
   if(kind === 'pick'){
     if(p.revealed || !(idx >= 0 && idx < p.opts.length)) return;
-    Object.assign(p, {revealed:true, picked:idx, ci:cb.ci, a:cb.a, correct: idx === cb.ci});
+    Object.assign(p, {revealed:true, picked:idx, ci:cb.ci, a:cb.a, ex:cb.ex, correct: idx === cb.ci});
+    logAnswer(p, cb, idx);
     render();
-    setTimeout(() => { if(state && state.pending === p) answerQuestion(p.correct ? 'ok' : 'no'); }, 2200);
+    setTimeout(() => { if(state && state.pending === p) answerQuestion(p.correct ? 'ok' : 'no'); }, 4200);
     return;
   }
   if(!p.revealed) return;
@@ -265,6 +299,7 @@ function commitSummon(k, xUid){
   t.fusionZone = Array(RULES.fusionSlotsPerTeam).fill(null);
   returnMagic(t);
   state.summoned = true;
+  (state.history = state.history || []).push({k, cid:c.id, turn:state.turnNo});
   const n = filled(t.completedZone).length;
   say(`✨ ${t.name} อัญเชิญ “${c.name}” สำเร็จ! (${n}/${RULES.winAtCompletedCards})`, 'good');
   if(n >= RULES.winAtCompletedCards) state.winner = k;
@@ -275,6 +310,7 @@ function commitSummon(k, xUid){
   setTimeout(() => {                                           // ไปขั้นเอฟเฟคเสมอ แม้แอนิเมชันไม่จบ (เช่น แท็บอยู่เบื้องหลัง)
     if(state !== game || state.pending) return;
     if(state.winner) return showWin(t);
+    if(state.drill){ say(`✨ อัญเชิญ “${c.name}” สำเร็จ · 🏋️ โหมดซ้อม: เอฟเฟค “${c.effect.name}” ไม่ทำงาน`, 'good'); state.phase = 'PREPARATION'; return render(); }
     if(isDefense(c)){ say(`🛡 “${c.name}” เป็นการ์ดป้องกัน — พร้อมใช้เมื่อถูกฝ่ายตรงข้ามโจมตี (ใช้ได้ 1 ครั้ง)`, 'good'); state.phase = 'PREPARATION'; return render(); }
     offerEffect(t, c);
   }, 1100);
@@ -629,9 +665,9 @@ function arenaHTML(){
   const near = team(view), far = team(other(view)), N = arenaSide(near,'near'), F = arenaSide(far,'far'), at = active();
   const casting = !!(state.teamA.sandhiSlot || state.teamB.sandhiSlot), tl = state.turnLeft ?? TURN_SECONDS;
   return `<div class="arena">
-    <div class="ar-banner"><div class="tn">รอบ ${state.round}</div><div class="who ${at.key}">ตาทีม ${at.key}</div>
+    <div class="ar-banner"><div class="tn">รอบ ${state.round}${state.drill?' <span class="modetag drill">🏋️ โหมดซ้อม · ไม่มีเอฟเฟค</span>':state.practice?'':' <span class="modetag real">⚔ เล่นจริง</span>'}</div><div class="who ${at.key}">ตาทีม ${at.key}</div>
       <div class="phases">${PHASES.map(([k,l])=>`<span class="${state.phase===k?'on':''}">${l}</span>`).join('')}</div>
-      <div class="tools">${ROOM?`<button class="tbtn" data-ui="join">🔑 ${ROOM}</button>`:''}<button class="tbtn" data-ui="view">⇅</button><button class="tbtn" data-ui="hands">👁</button><button class="tbtn" data-ui="fs">⛶</button><button class="tbtn" data-ui="rules">กติกา</button><button class="tbtn" data-ui="setup">เริ่มใหม่</button></div></div>
+      <div class="tools">${ROOM?`<button class="tbtn" data-ui="join">🔑 ${ROOM}</button>`:''}<button class="tbtn" data-ui="view">⇅</button><button class="tbtn" data-ui="hands">👁</button><button class="tbtn" data-ui="fs">⛶</button><button class="tbtn" data-ui="rules">กติกา</button><button class="tbtn" data-ui="gloss">📖 คลังคำ</button><button class="tbtn" data-ui="report">📊 รายงาน</button>${ROOM && typeof rosterOf==='function' && (rosterOf('A').length>1||rosterOf('B').length>1)?'<button class="tbtn" data-ui="rotC">⟳ ผู้คุม</button>':''}<button class="tbtn" data-ui="lite">⚡</button><button class="tbtn" data-ui="setup">${state.practice?'ออกจากฝึกหัด':'เริ่มใหม่'}</button></div>${ctlHTML()}</div>
     <div class="a-fcomp">${F.comp}</div>
     <div class="a-fhud">${F.hud}${F.hand}</div>
     <div class="a-fpiles side-${far.key}">${F.piles}</div>
@@ -639,7 +675,7 @@ function arenaHTML(){
     <div class="a-msg"><div class="msg ${msg.tone}">${esc(msg.text)}</div><div class="logo mini"><div class="l1">SAMAS CODEBREAKERS</div><div class="l2">FUSION DUEL</div></div></div>
     <div class="a-center"><div class="magic-circle ${casting?'active':''}">${MAGIC_CIRCLE}</div>
       <div class="ar-magic">${MTYPES.map(mt => { const n = pileCount(mt); return `<figure class="mfig">${n ? `<div class="card pile mpile click" ${da('sandhiZone',null,mt)}>${magicFaceHTML(mt)}<span class="count">${n}</span></div>` : `<div class="slot mslot">ว่าง</div>`}<figcaption>${esc(magicName(mt))}</figcaption></figure>`; }).join('')}</div></div>
-    <div class="a-time"><div class="bigclock ${tl<=10?'low':''}" id="tturn2" data-ui="pause">⌛ ${tl}</div><div class="tbar"><i id="tbar" style="width:${100*tl/TURN_SECONDS}%"></i></div>
+    <div class="a-time">${state.practice?'<div class="bigclock prac">🎓 ฝึกหัด</div>':`<div class="bigclock ${tl<=10?'low':''}" id="tturn2" data-ui="pause">⌛ ${tl}</div>`}<div class="tbar"><i id="tbar" style="width:${100*tl/TURN_SECONDS}%"></i></div>
       <div class="zhint">⏱ ทั้งเกม <span id="timer">${fmtTime(state.timeLeft)}</span>${state.paused?' ⏸':''}</div></div>
     <div class="a-nfus">${N.fus}</div>
     <div class="a-npiles side-${near.key}">${N.piles}</div>
@@ -656,14 +692,16 @@ function pendingHTML(){
     const c = p.cid ? COMP[p.cid] : null;
     return `<div class="overlay"><div class="modal">
       <h2>${esc(p.title)}</h2>
-      <div style="text-align:center"><span class="qnum">คำถามที่ ${p.i+1}/${p.n} · ทีม ${tk} ตอบ</span></div>
+      <div style="text-align:center"><span class="qnum">คำถามที่ ${p.i+1}/${p.n} · ทีม ${tk} ตอบ${p.an?` · ✋ ผู้ตอบ: ${esc(p.an)}`:''}</span></div>
       <div class="qbox">${esc(p.q)}</div>
       <div class="qopts">${p.opts.map((o,i)=>{ let cls=''; if(p.revealed){ if(i===p.ci) cls='ok'; else if(i===p.picked) cls='no'; }
         const can = !p.revealed && !(ROOM && onPhone);
         return `<button class="btn qo ${cls}" ${can?`data-p="q${i}"`:'disabled'}>${esc(o)}</button>`; }).join('')}</div>
       ${p.revealed ? `${c && p.correct ? `<div class="mgrid"><div class="card" style="--cw:clamp(100px,20vh,200px)">${compFaceHTML(c)}</div></div>`:''}
-        <div class="ans" style="font-size:clamp(20px,4vh,44px)">${p.correct?'✓ ถูกต้อง!':'✗ ยังไม่ถูก — คำตอบคือ “'+esc(p.a)+'”'}</div>`
-      : `<p style="text-align:center">${ROOM && onPhone?`📱 รอทีม ${tk} (ผู้อัญเชิญ) เลือกคำตอบบนมือถือ`:`ให้ทีม ${tk} ตอบ แล้วกดตัวเลือก`}</p>`}
+        <div class="ans" style="font-size:clamp(20px,4vh,44px)">${p.correct?'✓ ถูกต้อง!':'✗ ยังไม่ถูก — คำตอบคือ “'+esc(p.a)+'”'}</div>
+        ${p.ex?`<div class="qex">💡 ${esc(p.ex)}</div>`:''}`
+      : `<p style="text-align:center">${ROOM && onPhone?`📱 รอ${p.an?' '+esc(p.an)+' (ทีม '+tk+')':'ทีม '+tk} เลือกคำตอบบนมือถือ — ในทีมปรึกษากันได้`:`ให้ทีม ${tk} ตอบ แล้วกดตัวเลือก`}</p>
+        ${ROOM && p.au && typeof rosterOf === 'function' && rosterOf(tk).length > 1 ? `<div class="mfoot" style="justify-content:center"><button class="btn ghost sm" data-p="rotA">⟳ เปลี่ยนคนตอบ</button></div>` : ''}`}
     </div></div>`;
   }
   if(p.type === 'offer'){
@@ -708,6 +746,7 @@ function render(){
   document.getElementById('pend').innerHTML = ph;
   scheduleSync();
   if(typeof hostPlayerView === 'function') hostPlayerView();
+  if(typeof afterRender === 'function') afterRender();
 }
 document.getElementById('pend').addEventListener('click', e => {
   const b = e.target.closest('[data-p]'); if(!b) return;
@@ -718,6 +757,7 @@ document.getElementById('pend').addEventListener('click', e => {
   if(v==='use') return answerOffer(true);
   if(v==='skip') return answerOffer(false);
   if(v==='peek'){ teacherPeek = true; return render(); }
+  if(v==='rotA'){ const p = state && state.pending; if(p && p.type==='question' && !p.revealed && typeof assignAnswerer==='function'){ assignAnswerer(p, true); render(); } return; }
   if(v[0]==='c') return answerChoose(+v.slice(1));
 });
 
@@ -725,22 +765,22 @@ document.getElementById('pend').addEventListener('click', e => {
 function startTimer(){
   clearInterval(timerHandle);
   timerHandle = setInterval(() => {
-    if(!state || state.paused || state.winner) return;
+    if(!state || state.paused || state.winner || state.practice) return;
     if(state.timeLeft > 0) state.timeLeft--;
     const el = document.getElementById('timer');
     if(el){ el.textContent = fmtTime(state.timeLeft); }
-    if(state.timeLeft % 5 === 0) scheduleSync();
     if(state.timeLeft === 0 && !state.timeUpShown){ state.timeUpShown = true; showTimeUp(); }
     tickTurn();
   }, 1000);
 }
 /* เวลาต่อเทิร์น 45 วินาที — หยุดเดินระหว่างรอฝ่ายตรงข้ามตัดสินใจป้องกัน (มีเวลานับของตัวเอง 15 วินาที) */
 function tickTurn(){
+  if(state.practice) return;                                          // โหมดฝึกหัดไม่จับเวลา
   const p = state.pending;
   if(p && p.type === 'counter'){
     p.left = Math.max(0, (p.left ?? COUNTER_SECONDS) - 1);
     const el = document.getElementById('ctime'); if(el) el.textContent = p.left;
-    if(p.left === 0) answerCounter(-1); else scheduleSync();
+    if(p.left === 0) answerCounter(-1);
     return;
   }
   if(p && p.type === 'question' && p.revealed) return;               // กำลังแสดงเฉลย
@@ -750,13 +790,12 @@ function tickTurn(){
   if(el){ el.textContent = `⌛ ${state.turnLeft} วิ`; el.classList.toggle('low', state.turnLeft <= 10); }
   const e2 = document.getElementById('tturn2'); if(e2){ e2.textContent = `⌛ ${state.turnLeft}`; e2.classList.toggle('low', state.turnLeft <= 10); }
   const e3 = document.getElementById('tbar'); if(e3){ e3.style.width = (100*state.turnLeft/TURN_SECONDS) + '%'; e3.classList.toggle('low', state.turnLeft <= 10); }
-  if(state.turnLeft <= 10 || state.turnLeft % 5 === 0) scheduleSync();
   if(state.turnLeft === 0) turnTimeout();
 }
 function turnTimeout(){
   const p = state.pending, t = active();
   if(p){
-    if(p.type === 'question'){ state.pending = null; const cb = pendingCb; pendingCb = null; say(`⌛ หมดเวลา — ทีม ${t.key} ตอบไม่ทัน`, 'bad'); cb.onFail(); }
+    if(p.type === 'question'){ const cb = pendingCb; if(!p.revealed) logAnswer(p, cb, -1); state.pending = null; pendingCb = null; say(`⌛ หมดเวลา — ทีม ${t.key} ตอบไม่ทัน`, 'bad'); cb.onFail(); }
     else if(p.type === 'offer'){ state.pending = null; pendingCb = null; }
     else if(p.type === 'choose'){ return answerChoose(Math.floor(Math.random() * p.opts.length)); }   // เลือกแบบสุ่มแทน แล้วนับเวลาต่อ
   }
@@ -813,7 +852,11 @@ boardEl.addEventListener('click', e=>{
     if(u==='join') return showRoomPanel();
     if(u==='fs') return toggleFullscreen();
     if(u==='rules') return showRules();
-    if(u==='setup') return ROOM ? showRoomPanel() : showSetup();
+    if(u==='setup') return state && state.practice ? tutExit() : ROOM ? showRoomPanel() : showSetup();
+    if(u==='gloss') return showGlossary();
+    if(u==='report') return showReport(reportFromState());
+    if(u==='lite') return toggleLite();
+    if(u==='rotC'){ if(typeof rotateController==='function'){ rotateController(state.turn); render(); } return; }
   }
   const el = e.target.closest('[data-a]');
   if(el) act(el.dataset.a, el.dataset.k, el.dataset.x);
@@ -863,12 +906,14 @@ function showList(title, sub, cards){
 function showWin(t, prefix=''){
   openModal(`<div style="text-align:center"><h2>${prefix}🏆 ทีม ${t.key} ชนะ!</h2><div class="ans">${esc(t.name)}</div>
     <div class="mgrid">${filled(t.completedZone).map(x=>`<div class="card">${compFaceHTML(compOf(x))}</div>`).join('')}</div></div>
-    <div class="mfoot"><button class="btn ghost" onclick="closeModal()">ดูสนาม</button><button class="btn" onclick="showSetup()">เล่นใหม่</button></div>`);
+    <div class="mfoot"><button class="btn ghost" onclick="closeModal()">ดูสนาม</button><button class="btn ghost" onclick="showReport(reportFromState())">📊 รายงานผล</button><button class="btn summon" onclick="showDebrief()">📖 สรุปบทเรียน</button></div>`);
+  if(typeof saveReport === 'function') saveReport();
   scheduleSync();
 }
 function showRules(){
   openModal(`<h2>กติกา FUSION DUEL</h2><ol class="rules">
-    <li>2 ทีม ทีมละ ${RULES.playersPerTeam} คน ใช้มือร่วมกัน · ทีม A ฝั่งบน (น้ำเงิน) ทีม B ฝั่งล่าง (แดง)</li>
+    <li>2 ทีม · สมาชิกในทีมใช้มือการ์ดร่วมกัน และเข้าเล่นได้หลายเครื่อง (มือถือคนละเครื่อง)</li>
+    <li>บทบาทในทีม: 👑 <b>ผู้คุมการ์ด</b> เป็นคนกดจั่ว/วาง/อัญเชิญ (หมุนเวียนทุกเทิร์น) · ✋ <b>ผู้ตอบ</b> เป็นคนกดตอบคำถาม (หมุนเวียนทุกข้อ) — ทุกคนช่วยกันคิดได้</li>
     <li>เล่นได้ 2 แบบ: เครื่องเดียว (แตะบนจอ) หรือออนไลน์ — ล็อกอิน Google สร้างห้องพร้อมรหัสผ่าน ให้ผู้เล่นสแกน QR เข้าห้อง เลือกทีม แล้วกด “พร้อม” ทั้งสองฝ่ายเกมจึงเริ่ม · การ์ดในมือของแต่ละทีมเห็นเฉพาะทีมตัวเอง</li>
     <li>สำรับทีมละ ${RULES.mainDeckSizePerTeam} ใบ · เริ่มถือ ${RULES.openingHandSize} ใบ · จั่วเทิร์นละ ${RULES.drawPerTurn} ใบ (ทีมแรกงดจั่วเทิร์นแรก) · สำรับหมดให้ข้ามการจั่ว</li>
     <li>ลำดับเทิร์น: จั่ว → เตรียม → ฟิวชัน → ตอบคำถาม → เอฟเฟค → จบเทิร์น</li>
@@ -881,11 +926,13 @@ function showRules(){
     <li>เอฟเฟคล็อกช่อง: ล็อกช่องรากศัพท์ว่างของคู่แข่ง 1 ช่อง ตลอดเทิร์นถัดไปของคู่แข่ง · ล็อกติดกันสองเทิร์นไม่ได้</li>
     <li>ต้องวางรากศัพท์ให้ตรงช่องตามสูตรบนการ์ด: ช่อง 1 = รากศัพท์ตัวหน้า, ช่อง 2 = รากศัพท์ตัวหลัง (เช่น อุทกภัย = ช่อง 1 อุทก · ช่อง 2 ภัย) — วางสลับช่องจะอัญเชิญไม่ได้</li>
     <li>เวลาเทิร์นละ ${TURN_SECONDS} วินาที — หมดเวลาจะจบเทิร์นอัตโนมัติ (ถ้ากำลังตอบคำถามจะนับว่าตอบผิด)</li>
-    <li>ทีมแรกที่มีคำสมบูรณ์ครบ ${RULES.winAtCompletedCards} ใบชนะ · ครบ ${RULES.timeLimitMinutes} นาทีให้นับคำสมบูรณ์</li></ol>
+    <li>โหมด <b>⚔ เล่นจริง</b> ใช้เอฟเฟคการ์ดทุกแบบ · โหมด <b>🏋️ ซ้อมเล่น</b> ทุกอย่างเหมือนเกมจริงแต่เอฟเฟคไม่เกิดผล (เหมาะกับการฝึกสร้างคำล้วน ๆ)</li>
+    <li>ทีมแรกที่มีคำสมบูรณ์ครบ ${RULES.winAtCompletedCards} ใบชนะ · ครบ ${RULES.timeLimitMinutes} นาทีให้นับคำสมบูรณ์</li>
+    <li>หลังเฉลยทุกข้อจะมีคำอธิบายหลักการ 💡 · จบเกมแล้วดู “สรุปบทเรียน” และ “รายงานผล” ได้บนจอกลาง</li></ol>
     <div class="mfoot"><button class="btn" onclick="closeModal()">เข้าใจแล้ว</button></div>`);
 }
 const SAVE_KEY = 'fusion-duel-save';
-function loadSave(){ try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY + (ROOM?'-'+ROOM:''))||'null'); return s && s.state && !s.state.winner ? s : null; }catch(e){ return null; } }
+function loadSave(){ if(typeof TUT !== 'undefined' && TUT) return null; try{ const s = JSON.parse(localStorage.getItem(SAVE_KEY + (ROOM?'-'+ROOM:''))||'null'); return s && s.state && !s.state.winner ? s : null; }catch(e){ return null; } }
 function resumeGame(){
   const s = loadSave(); if(!s) return;
   if(!s.state.sandhiZone || !s.state.sandhiZone.piles) return showSetup();
@@ -893,19 +940,29 @@ function resumeGame(){
   if(state.pending){ state.pending = null; state.phase = 'PREPARATION'; }
   pendingCb = null; closeModal(); startTimer(); render();
 }
-function showSetup(){
+let setupDrill = false;
+function showSetup(drill){
+  if(drill !== undefined) setupDrill = !!drill;
   const a = state ? state.teamA.name : 'ทีมนักถอดรหัส', b = state ? state.teamB.name : 'ทีมจอมเวท';
   const core = GD.completedCards.filter(c=>c.release==='core').length, all = GD.completedCards.length;
   const rc = GD.roots.filter(r=>r.release==='core').length, saved = loadSave();
   openModal(`<div class="setup" style="text-align:center"><div class="logo" style="justify-content:center">${LOTUS}<div><div class="l1">SAMAS CODEBREAKERS</div><div class="l2">FUSION DUEL</div></div>${LOTUS}</div></div>
     <div class="setup">
-    <label>ชื่อทีม A (ฝั่งบน · สีน้ำเงิน)</label><input type="text" id="nA" value="${esc(a)}">
-    <label>ชื่อทีม B (ฝั่งล่าง · สีแดง)</label><input type="text" id="nB" value="${esc(b)}">
+    <label>โหมดการเล่น</label>${modePickHTML(setupDrill)}
+    <div class="row2"><div><label>ชื่อทีม A (สีน้ำเงิน)</label><input type="text" id="nA" value="${esc(a)}"></div>
+    <div><label>ชื่อทีม B (สีแดง)</label><input type="text" id="nB" value="${esc(b)}"></div></div>
     <label>ชุดการ์ด</label>
     <div class="chk"><input type="radio" name="rel" id="relCore" checked><span>ชุดหลัก — รากศัพท์ ${rc} แบบ · คำสมบูรณ์ ${core} ใบ</span></div>
     <div class="chk"><input type="radio" name="rel" id="relExp"><span>ชุดหลัก + ส่วนขยาย — รากศัพท์ ${GD.roots.length} แบบ · คำสมบูรณ์ ${all} ใบ</span></div>
-    <p class="note">โหมดเครื่องเดียว: ทั้งสองทีมแตะเล่นบนจอนี้ · ถ้าต้องการให้แต่ละทีมเล่นบนมือถือของตัวเอง ให้ออกไปหน้าแรกแล้วสร้างห้องออนไลน์</p>
+    <p class="note">เครื่องเดียว: ทั้งสองทีมแตะเล่นบนจอนี้ · ถ้าต้องการให้แต่ละทีมเล่นบนมือถือ ให้กลับหน้าแรกแล้วสร้างห้องออนไลน์</p>
     <div class="mfoot">${saved?`<button class="btn ghost" onclick="resumeGame()">เล่นต่อเกมเดิม (รอบ ${saved.state.round})</button>`:''}<button class="btn ghost" onclick="showRules()">กติกา</button>
-      <button class="btn summon" onclick="newGame(document.getElementById('nA').value.trim()||'ทีม A',document.getElementById('nB').value.trim()||'ทีม B',document.getElementById('relExp').checked)">เริ่มดวล ⚔</button></div></div>`);
+      <button class="btn summon" onclick="newGame(document.getElementById('nA').value.trim()||'ทีม A',document.getElementById('nB').value.trim()||'ทีม B',document.getElementById('relExp').checked,document.getElementById('mdDrill').checked)">เริ่มดวล ⚔</button></div></div>`);
+}
+/* เลือกโหมด: เล่นจริง (มีเอฟเฟคครบ) / ซ้อมเล่น (เอฟเฟคไม่เกิดผล) */
+function modePickHTML(drill){
+  return `<div class="modepick">
+    <label class="mode real"><input type="radio" name="gmode" id="mdReal" ${drill?'':'checked'}><span class="mbox"><b>⚔ เล่นจริง</b><small>เอฟเฟคการ์ดครบ: 🔒 ล็อกช่องรากศัพท์ · 💥 ทำลายคำสมบูรณ์ (เด้งกลับ Extra Deck) · 🛡 การ์ดป้องกัน ฯลฯ</small></span></label>
+    <label class="mode drill"><input type="radio" name="gmode" id="mdDrill" ${drill?'checked':''}><span class="mbox"><b>🏋️ ซ้อมเล่น</b><small>การ์ดชุดเดิม จั่ว–วาง–อัญเชิญ–ตอบคำถามเหมือนจริง แต่เอฟเฟคการ์ดไม่เกิดผล</small></span></label>
+  </div>`;
 }
 

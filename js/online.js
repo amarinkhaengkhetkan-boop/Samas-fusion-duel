@@ -6,10 +6,10 @@
      · private/A, B    = การ์ดในมือของแต่ละทีม (กฎฐานข้อมูลให้อ่านได้เฉพาะเจ้าของที่นั่ง + โฮสต์)
    - ผู้เล่นส่งคำสั่งเข้า actions/ แล้วโฮสต์เป็นผู้ตรวจและดำเนินการ
    ===================================================================== */
-const APP_VER = '20261114e';
+const APP_VER = '20261120a';
 let AUTH = null, DB = null, USER = null;
 let ROOM = null, ROOM_PW = '', IS_HOST = false, MYSEAT = null, ROOMINFO = null;
-let SEATS = {}, READY = {}, NAMES = {};
+let TEAMS = {}, READY = {}, NAMES = {};
 let offFns = [];
 let xView = null, zoomCid = null, zoomRoot = null;
 let S = null, phoneSel = null, castMenu = false, phoneConn = 'connecting', lastStateAt = 0, pubCache = null, privCache = null;
@@ -34,7 +34,11 @@ async function sha256(s){
 const pwHash = (code, pw) => sha256(`samas:${code}:${pw}`);
 const rr = p => DB.ref(`rooms/${ROOM}${p ? '/' + p : ''}`);
 const myName = () => (USER && (USER.displayName || USER.email)) || 'ผู้เล่น';
-const teamName = k => SEATS[k] ? (NAMES[SEATS[k]] || `ทีม ${k}`) : `ทีม ${k}`;
+const rosterOf = k => Object.entries((TEAMS && TEAMS[k]) || {}).sort((a,b) => (a[1]||0) - (b[1]||0)).map(e => e[0]);
+const nameOf = u => (u && NAMES[u]) || 'ผู้เล่น';
+const shortName = u => nameOf(u).split(' ')[0];
+const teamName = k => { const r = rosterOf(k).map(shortName); return r.length ? `${r.slice(0,3).join(', ')}${r.length>3?` +${r.length-3}`:''}` : `ทีม ${k}`; };
+const myUid = () => USER ? USER.uid : null;
 const joinLink = code => `${location.origin}${location.pathname}?room=${code}`;
 function saveLast(){ try{ localStorage.setItem('fusion-duel-last', JSON.stringify({code:ROOM, pw:ROOM_PW})); }catch(e){} }
 function loadLast(){ try{ return JSON.parse(localStorage.getItem('fusion-duel-last') || 'null'); }catch(e){ return null; } }
@@ -47,19 +51,42 @@ function fbErr(e){
   return c;
 }
 
-/* ---------- หน้าจอ: ตั้งค่า / ล็อกอิน / หน้าแรก ---------- */
+/* ---------- หน้าแรก (Landing) ---------- */
+function showLanding(html){ scrEl.innerHTML = `<div class="landing">${html}</div>`; scrEl.onclick = null; }
+const HERO_CARDS = ['C21','C13','C01','C14','C02'];
+function heroHTML(){
+  return `<div class="hero">
+    <div class="hero-circle">${MAGIC_CIRCLE}</div>
+    <div class="hero-fan">${HERO_CARDS.filter(id => COMP[id]).map((id,i) => `<div class="card hc hc${i}">${compFaceHTML(COMP[id])}</div>`).join('')}</div>
+    <div class="logo hero-logo">${LOTUS}<div><div class="l1">SAMAS CODEBREAKERS</div><div class="l2">FUSION DUEL</div></div>${LOTUS}</div>
+    <p class="tagline">ถอดรหัสคำสมาส–คำสนธิ · ฟิวชันรากศัพท์ · อัญเชิญพลังแห่งคำ</p>
+  </div>`;
+}
+const menuCard = (id, icon, title, sub, cls='') => `<button class="mcardbtn ${cls}" id="${id}"><span class="mi">${icon}</span><span class="mt">${title}</span><span class="ms">${sub}</span></button>`;
+const landFoot = () => `<div class="landfoot">เวอร์ชัน ${APP_VER} · <a href="#" onclick="toggleLite();return false">${document.body.classList.contains('lite')?'⚡ โหมดลื่น: เปิด':'⚡ โหมดลื่น: ปิด'}</a></div>`;
+function bindCommon(){
+  const on = (id, f) => { const b = document.getElementById(id); if(b) b.onclick = f; };
+  on('mPrac', () => tutStart());
+  on('mGloss', () => showGlossary());
+  on('mRules', () => showRulesPop());
+  on('mOff', () => startOffline());
+  on('mDrillOff', () => startOffline(true));
+  on('mRep', () => showReportList());
+}
 function showNeedsSetup(){
-  showScr(`${LOGO()}<h2>ยังไม่ได้ตั้งค่าระบบออนไลน์</h2>
-    <p>ต้องใส่ค่า Firebase ในไฟล์ <code>js/firebase-config.js</code> ก่อน จึงจะล็อกอิน Google และสร้างห้องได้ (ดูคู่มือใน README.md)</p>
-    <div class="mfoot"><button class="btn summon" onclick="startOffline()">เล่นเครื่องเดียว (ออฟไลน์)</button></div>`);
+  showLanding(`${heroHTML()}
+    <div class="panel"><h3>ยังไม่ได้ตั้งค่าระบบออนไลน์</h3><p>ใส่ค่า Firebase ในไฟล์ <code>js/firebase-config.js</code> ก่อน (ดู README.md) — ระหว่างนี้ยังฝึกหัดและเล่นเครื่องเดียวได้</p></div>
+    <div class="menu">${menuCard('mPrac','🎓','ฝึกหัดการเล่น','เรียนกติกาทีละขั้น ไม่จับเวลา')}${menuCard('mOff','🖥','เล่นเครื่องเดียว','สองทีมแตะเล่นบนจอเดียว')}${menuCard('mGloss','📖','คลังคำ','รากศัพท์ คำอ่าน ความหมาย')}${menuCard('mRules','📜','กติกา','อ่านกติกาทั้งหมด')}</div>${landFoot()}`);
+  bindCommon();
 }
 function showLogin(err=''){
-  showScr(`${LOGO()}<h2 style="text-align:center">เข้าสู่ระบบ</h2>
-    <p style="text-align:center">ล็อกอินด้วย Google เพื่อสร้างห้องหรือเข้าร่วมห้องดวล${qs.get('room')?` <b>(ห้อง ${esc(qs.get('room'))})</b>`:''}</p>
-    ${err?`<p class="note" style="color:#ffb4c4;text-align:center">${esc(err)}</p>`:''}
-    <div class="mfoot" style="justify-content:center"><button class="btn gbtn" id="glogin"><span class="g">G</span> เข้าสู่ระบบด้วย Google</button></div>
-    <div class="mfoot" style="justify-content:center"><button class="btn ghost" onclick="startOffline()">เล่นเครื่องเดียว (ไม่ต้องล็อกอิน)</button></div>`);
+  showLanding(`${heroHTML()}
+    ${err?`<p class="note err">${esc(err)}</p>`:''}
+    <div class="loginbox"><button class="btn gbtn" id="glogin"><span class="g">G</span> เข้าสู่ระบบด้วย Google</button>
+      <div class="zhint">${qs.get('room')?`เพื่อเข้าห้อง <b>${esc(qs.get('room'))}</b>`:'เพื่อสร้างห้องดวล หรือเข้าร่วมห้องของเพื่อน'}</div></div>
+    <div class="menu">${menuCard('mPrac','🎓','ฝึกหัดการเล่น','เรียนกติกาทีละขั้น ไม่ต้องล็อกอิน')}${menuCard('mDrillOff','🏋️','ซ้อมเล่น','การ์ดชุดเดิม เอฟเฟคไม่เกิดผล · เล่นบนจอนี้')}${menuCard('mGloss','📖','คลังคำ','รากศัพท์ คำอ่าน ความหมาย')}${menuCard('mRules','📜','กติกา','อ่านกติกาทั้งหมด')}${menuCard('mOff','🖥','เล่นเครื่องเดียว','สองทีมแตะเล่นบนจอเดียว')}</div>${landFoot()}`);
   document.getElementById('glogin').onclick = signIn;
+  bindCommon();
 }
 async function signIn(){
   const prov = new firebase.auth.GoogleAuthProvider();
@@ -70,47 +97,80 @@ async function signIn(){
     showLogin(fbErr(e));
   }
 }
-function showHome(err=''){
+let homeDrill = false;
+function showHome(err='', panel=null, drill){
   const last = loadLast(), pre = qs.get('room') || '';
+  if(!panel && pre) panel = 'join';
+  if(drill !== undefined) homeDrill = !!drill;
   const core = GD.completedCards.filter(c=>c.release==='core').length, all = GD.completedCards.length;
-  showScr(`${LOGO()}
-    <div class="userbar">${USER.photoURL?`<img src="${esc(USER.photoURL)}" alt="">`:''}<span>${esc(myName())}</span><button class="btn ghost sm" onclick="AUTH.signOut()">ออกจากระบบ</button></div>
-    ${err?`<p class="note" style="color:#ffb4c4">${esc(err)}</p>`:''}
-    <div class="homegrid">
-      <section class="setup"><h3>🔑 เข้าร่วมห้อง</h3>
-        <label>รหัสห้อง (6 หลัก)</label><input type="text" id="jCode" inputmode="numeric" maxlength="6" value="${esc(pre)}" placeholder="123456">
-        <label>รหัสผ่านห้อง</label><input type="text" id="jPw" value="${esc(qs.get('pw')||'')}" autocomplete="off">
-        <div class="mfoot"><button class="btn summon" id="bJoin">เข้าห้อง</button></div>
-        ${last && last.code ? `<p class="note">ห้องล่าสุด: <a href="#" id="bLast">${esc(last.code)} — กลับเข้าห้อง</a></p>` : ''}
-      </section>
-      <section class="setup"><h3>✨ สร้างห้องใหม่</h3>
-        <label>ตั้งรหัสผ่านห้อง</label><input type="text" id="cPw" value="${String(1000+Math.floor(Math.random()*9000))}" autocomplete="off">
-        <label>เครื่องนี้ทำหน้าที่</label>
-        <div class="chk"><input type="radio" name="crole" id="rTV" checked><span>จอกลาง / ครู (ฉายขึ้นทีวี ทั้งสองทีมเล่นบนมือถือ)</span></div>
-        <div class="chk"><input type="radio" name="crole" id="rA"><span>ผู้เล่นทีม A (ดวลกับเพื่อนอีกเครื่อง)</span></div>
-        <label>ชุดการ์ด</label>
-        <div class="chk"><input type="radio" name="crel" id="cCore" checked><span>ชุดหลัก (${core} คำ)</span></div>
-        <div class="chk"><input type="radio" name="crel" id="cExp"><span>ชุดหลัก + ส่วนขยาย (${all} คำ)</span></div>
-        <div class="mfoot"><button class="btn summon" id="bCreate">สร้างห้อง</button></div>
-      </section>
-    </div>
-    <div class="mfoot"><button class="btn ghost" onclick="showRules()">กติกา</button><button class="btn ghost" onclick="startOffline()">เล่นเครื่องเดียว</button></div>`);
-  document.getElementById('bJoin').onclick = () => joinRoom(document.getElementById('jCode').value.trim(), document.getElementById('jPw').value.trim());
-  document.getElementById('bCreate').onclick = () => createRoom(document.getElementById('cPw').value.trim(), document.getElementById('rA').checked ? 'A' : null, document.getElementById('cExp').checked);
+  const user = `<div class="userbar">${USER.photoURL?`<img src="${esc(USER.photoURL)}" alt="">`:''}<span>${esc(myName())}</span><button class="btn ghost sm" onclick="AUTH.signOut()">ออกจากระบบ</button></div>`;
+  const steps = (n, arr) => `<div class="steps">${arr.map((t,i)=>`<span class="${i<n?'on':''}"><b>${i+1}</b>${t}</span>`).join('')}</div>`;
+  let body;
+  if(panel === 'join') body = `<div class="panel glass">
+      <div class="phead"><span class="pico">🔑</span><div><h3>เข้าร่วมห้องดวล</h3><div class="zhint">ขอรหัสห้องและรหัสผ่านจากครู หรือสแกน QR บนจอกลาง</div></div></div>
+      ${steps(1, ['ใส่รหัส', 'เลือกทีม', 'กดพร้อม'])}
+      <label>รหัสห้อง</label><input type="text" id="jCode" class="bigcode" inputmode="numeric" maxlength="6" value="${esc(pre)}" placeholder="••••••" autocomplete="off">
+      <label>รหัสผ่านห้อง</label><input type="text" id="jPw" class="bigpw" value="${esc(qs.get('pw')||'')}" autocomplete="off" placeholder="รหัสผ่าน">
+      <div class="mfoot"><button class="btn ghost" id="bBack">← กลับ</button><button class="btn summon big" id="bJoin">เข้าห้อง ⚔</button></div>
+      ${last && last.code ? `<button class="lastroom" id="bLast">↺ กลับเข้าห้องล่าสุด <b>${esc(last.code)}</b></button>` : ''}</div>`;
+  else if(panel === 'drill') body = `<div class="panel glass">
+      <div class="phead"><span class="pico">🏋️</span><div><h3>ซ้อมเล่น</h3><div class="zhint">ใช้การ์ดชุดเดิม เล่นเหมือนจริงทุกขั้น แต่เอฟเฟคการ์ดไม่เกิดผล — ฝึกสร้างคำและตอบคำถามล้วน ๆ</div></div></div>
+      <div class="choice2">
+        <button class="choice" id="dOnline"><span class="ci">📱</span><b>ซ้อมแบบออนไลน์</b><small>สร้างห้องซ้อม · นักเรียนสแกน QR เล่นบนมือถือ</small></button>
+        <button class="choice" id="dLocal"><span class="ci">🖥</span><b>ซ้อมบนเครื่องนี้</b><small>สองทีมผลัดกันแตะบนจอเดียว ไม่ต้องสร้างห้อง</small></button>
+      </div>
+      <div class="mfoot"><button class="btn ghost" id="bBack">← กลับ</button></div></div>`;
+  else if(panel === 'create') body = `<div class="panel glass wide">
+      <div class="phead"><span class="pico">✨</span><div><h3>สร้างห้องดวล</h3><div class="zhint">ตั้งค่าครั้งเดียว แล้วฉายหน้าล็อบบี้ให้นักเรียนสแกน QR</div></div></div>
+      <label>โหมดการเล่น</label>${modePickHTML(homeDrill)}
+      <label>เครื่องนี้ทำหน้าที่</label>
+      <div class="modepick">
+        <label class="mode"><input type="radio" name="crole" id="rTV" checked><span class="mbox"><b>🖥 จอกลาง / ครู</b><small>ฉายขึ้นทีวี — นักเรียนเล่นบนมือถือทั้งสองทีม</small></span></label>
+        <label class="mode"><input type="radio" name="crole" id="rA"><span class="mbox"><b>📱 ผู้เล่นทีม A</b><small>ดวลกับเพื่อนอีกเครื่อง ไม่มีจอกลาง</small></span></label>
+      </div>
+      <div class="row2">
+        <div><label>ชุดการ์ด</label>
+          <div class="chk"><input type="radio" name="crel" id="cCore" checked><span>ชุดหลัก (${core} คำ)</span></div>
+          <div class="chk"><input type="radio" name="crel" id="cExp"><span>ชุดหลัก + ส่วนขยาย (${all} คำ)</span></div></div>
+        <div><label>รหัสผ่านห้อง</label><input type="text" id="cPw" class="bigpw" value="${String(1000+Math.floor(Math.random()*9000))}" autocomplete="off">
+          <div class="chk"><input type="checkbox" id="cRot" checked><span>หมุนเวียน 👑 ผู้คุมการ์ดทุกเทิร์น</span></div></div>
+      </div>
+      <div class="mfoot"><button class="btn ghost" id="bBack">← กลับ</button><button class="btn summon big" id="bCreate">สร้างห้อง ✨</button></div></div>`;
+  else body = `<div class="menu">
+      ${menuCard('mCreate','⚔','สร้างห้องดวล','เล่นจริง · เอฟเฟคครบ','hot')}
+      ${menuCard('mJoin','🔑','เข้าร่วมห้อง','ใส่รหัสห้องและรหัสผ่าน','hot')}
+      ${menuCard('mDrill','🏋️','ซ้อมเล่น','การ์ดชุดเดิม เอฟเฟคไม่เกิดผล','drill')}
+      ${menuCard('mPrac','🎓','ฝึกหัดการเล่น','ผู้พิทักษ์รหัสสอนทีละขั้น')}
+      ${menuCard('mGloss','📖','คลังคำ','รากศัพท์ คำอ่าน ความหมาย')}
+      ${menuCard('mRep','📊','รายงานผล','ผลการตอบย้อนหลัง · CSV')}
+      ${menuCard('mRules','📜','กติกา','อ่านกติกาทั้งหมด')}
+      ${menuCard('mOff','🖥','เล่นเครื่องเดียว','สองทีมแตะเล่นบนจอเดียว')}</div>`;
+  showLanding(`${heroHTML()}${user}${err?`<p class="note err">${esc(err)}</p>`:''}${body}${landFoot()}`);
+  bindCommon();
+  const on = (id, f) => { const b = document.getElementById(id); if(b) b.onclick = f; };
+  on('mCreate', () => showHome('', 'create', false));
+  on('mJoin', () => showHome('', 'join'));
+  on('mDrill', () => showHome('', 'drill'));
+  on('dOnline', () => showHome('', 'create', true));
+  on('dLocal', () => startOffline(true));
+  on('bBack', () => { history.replaceState(null, '', location.pathname); qs.delete('room'); showHome(); });
+  on('bJoin', () => joinRoom(document.getElementById('jCode').value.trim(), document.getElementById('jPw').value.trim()));
+  on('bCreate', () => createRoom(document.getElementById('cPw').value.trim(), document.getElementById('rA').checked ? 'A' : null, document.getElementById('cExp').checked, document.getElementById('cRot').checked, document.getElementById('mdDrill').checked));
   const bl = document.getElementById('bLast'); if(bl) bl.onclick = e => { e.preventDefault(); joinRoom(last.code, last.pw); };
-  if(pre && qs.get('pw')) joinRoom(pre, qs.get('pw'));
+  const jc = document.getElementById('jCode'); if(jc) jc.addEventListener('input', () => { jc.value = jc.value.replace(/\D/g,''); if(jc.value.length === 6) document.getElementById('jPw').focus(); });
+  if(pre && qs.get('pw') && panel === 'join' && !err) joinRoom(pre, qs.get('pw'));
 }
-function busy(t){ showScr(`${LOGO()}<div class="ph-wait">${esc(t)}</div>`); }
+function busy(t){ showLanding(`${heroHTML()}<div class="ph-wait">${esc(t)}</div>`); }
 
 /* ---------- สร้าง / เข้าร่วมห้อง ---------- */
-async function createRoom(pw, seat, exp){
-  if(pw.length < 4) return showHome('รหัสผ่านห้องต้องมีอย่างน้อย 4 ตัวอักษร');
+async function createRoom(pw, seat, exp, rot=true, drill=false){
+  if(pw.length < 4) return showHome('รหัสผ่านห้องต้องมีอย่างน้อย 4 ตัวอักษร', 'create');
   busy('กำลังสร้างห้อง…');
   try{
     let code = null;
     for(let i=0;i<8 && !code;i++){
       const c = String(100000 + Math.floor(Math.random()*900000));
-      const r = await DB.ref(`rooms/${c}/info`).transaction(cur => cur ? undefined : {host:USER.uid, hostName:myName(), exp:!!exp, createdAt:Date.now()});
+      const r = await DB.ref(`rooms/${c}/info`).transaction(cur => cur ? undefined : {host:USER.uid, hostName:myName(), exp:!!exp, rot:!!rot, drill:!!drill, createdAt:Date.now()});
       if(r.committed) code = c;
     }
     if(!code) throw new Error('สร้างรหัสห้องไม่สำเร็จ ลองใหม่');
@@ -119,12 +179,12 @@ async function createRoom(pw, seat, exp){
     await rr('secret').set({pwHash:h});
     await rr('members/' + USER.uid).set(h);
     await rr('names/' + USER.uid).set(myName());
-    if(seat) await rr('seats/' + seat).set(USER.uid);
+    if(seat) await joinTeam(seat);
     saveLast(); enterRoom();
-  }catch(e){ ROOM = null; showHome('สร้างห้องไม่สำเร็จ: ' + fbErr(e)); }
+  }catch(e){ ROOM = null; showHome('สร้างห้องไม่สำเร็จ: ' + fbErr(e), 'create'); }
 }
 async function joinRoom(code, pw){
-  if(!/^\d{6}$/.test(code)) return showHome('รหัสห้องต้องเป็นตัวเลข 6 หลัก');
+  if(!/^\d{6}$/.test(code)) return showHome('รหัสห้องต้องเป็นตัวเลข 6 หลัก', 'join');
   busy('กำลังเข้าห้อง…');
   try{
     const h = await pwHash(code, pw);
@@ -132,11 +192,16 @@ async function joinRoom(code, pw){
     ROOM = code; ROOM_PW = pw;
     await rr('names/' + USER.uid).set(myName());
     saveLast(); enterRoom();
-  }catch(e){ ROOM = null; showHome('เข้าห้องไม่สำเร็จ: ' + fbErr(e)); }
+  }catch(e){ ROOM = null; showHome('เข้าห้องไม่สำเร็จ: ' + fbErr(e), 'join'); }
 }
+async function joinTeam(k){
+  try{ await rr(`teams/${k}/${USER.uid}`).set(firebase.database.ServerValue.TIMESTAMP); }
+  catch(e){ throw new Error(/permission/i.test(e.code||e.message||'') ? 'เข้าทีมไม่ได้ — ถ้าเพิ่งอัปเดตเกม ครูต้องอัปเดต Rules ของฐานข้อมูลใน Firebase ด้วย (ดูคู่มือ)' : fbErr(e)); }
+}
+const gameRunning = () => IS_HOST ? !!(state && !state.winner) : !!(S && !S.none && !S.win);
 function leaveRoom(){
   offFns.forEach(f => f()); offFns = [];
-  if(ROOM && MYSEAT && !(state && !state.winner)) rr('seats/' + MYSEAT).remove().catch(()=>{});
+  if(ROOM && MYSEAT && !gameRunning()) rr(`teams/${MYSEAT}/${USER.uid}`).remove().catch(()=>{});
   try{ localStorage.removeItem('fusion-duel-last'); }catch(e){}
   location.href = location.pathname;
 }
@@ -152,7 +217,12 @@ async function enterRoom(){
   ROOMINFO = (await rr('info').once('value')).val();
   IS_HOST = ROOMINFO && ROOMINFO.host === USER.uid;
   history.replaceState(null, '', `?room=${ROOM}`);
-  listen('seats', s => { SEATS = s.val() || {}; MYSEAT = ['A','B'].find(k => SEATS[k] === USER.uid) || null; onRoomChange(); });
+  listen('teams', s => {
+    TEAMS = s.val() || {};
+    MYSEAT = ['A','B'].find(k => TEAMS[k] && TEAMS[k][USER.uid]) || null;
+    if(IS_HOST && state){ state.teamA.name = teamName('A'); state.teamB.name = teamName('B'); }
+    onRoomChange();
+  });
   listen('ready', s => { READY = s.val() || {}; onRoomChange(); });
   listen('names', s => { NAMES = s.val() || {}; onRoomChange(); });
   DB.ref('.info/connected').on('value', s => { phoneConn = s.val() ? 'ok' : 'lost'; if(MODE==='P' && S) renderPhone(); });
@@ -172,9 +242,9 @@ async function enterRoom(){
 let privListening = null;
 function onRoomChange(){
   if(!ROOM) return;
-  phoneOn = {A: !!SEATS.A, B: !!SEATS.B};
+  phoneOn = {A: rosterOf('A').length > 0, B: rosterOf('B').length > 0};
   if(!IS_HOST && MYSEAT && privListening !== MYSEAT){
-    /* ต่อการ์ดในมือของทีมเรา — ถ้าเซิร์ฟเวอร์ยังไม่ยืนยันที่นั่ง (ปฏิเสธสิทธิ์อ่าน) ให้ลองใหม่อัตโนมัติ */
+    /* ต่อการ์ดในมือของทีมเรา — ถ้าเซิร์ฟเวอร์ยังไม่ยืนยันการเข้าทีม (ปฏิเสธสิทธิ์อ่าน) ให้ลองใหม่อัตโนมัติ */
     privListening = MYSEAT;
     const seatNow = MYSEAT;
     listen('private/' + seatNow, s => { privCache = s.val(); composeS(); }, 'value', () => {
@@ -183,51 +253,63 @@ function onRoomChange(){
     });
   }
   if(!IS_HOST && !MYSEAT){ privListening = null; privCache = null; }
-  if(IS_HOST && !state && SEATS.A && SEATS.B && READY.A && READY.B) return hostStart();
-  const started = IS_HOST ? !!state : !!(pubCache && pubCache.j);
+  if(IS_HOST && !state && phoneOn.A && phoneOn.B && READY.A && READY.B) return hostStart();
+  const started = IS_HOST ? !!state : !!(pubCache && pubCache.j && !JSON.parse(pubCache.j).none);
   if(!started) return showLobby();
   closeScr();
   if(IS_HOST && !MYSEAT){ MODE = 'TV'; document.body.classList.remove('phone'); render(); }
   else { goPhone(); if(IS_HOST) render(); else renderPhone(); }
 }
 function showLobby(){
-  const seatBox = k => {
-    const uid = SEATS[k], mine = uid && uid === USER.uid;
-    return `<div class="seat ${k} ${uid?'taken':''}">
-      <div class="tm">ทีม ${k}</div>
-      <div class="nm">${uid ? esc(NAMES[uid] || 'ผู้เล่น') + (mine?' (คุณ)':'') : 'ว่าง'}</div>
-      <div class="rd ${READY[k]?'on':''}">${READY[k] ? '✅ พร้อมแล้ว' : uid ? '⏳ ยังไม่พร้อม' : ''}</div>
-      ${!uid && !MYSEAT && !IS_HOST ? `<button class="btn" data-l="sit${k}">นั่งทีม ${k}</button>` : ''}
-      ${mine ? `<button class="btn ${READY[k]?'ghost':'summon'}" data-l="rdy${k}">${READY[k]?'ยกเลิกพร้อม':'กดพร้อม ✔'}</button><button class="btn ghost sm" data-l="up${k}">ลุกจากที่นั่ง</button>` : ''}
-      ${IS_HOST && uid && !mine ? `<button class="btn ghost sm" data-l="kick${k}">ให้ออกจากที่นั่ง</button>` : ''}
-    </div>`;
+  const drill = !!(ROOMINFO && ROOMINFO.drill);
+  const av = u => `<span class="av">${esc((nameOf(u).trim()[0]||'?').toUpperCase())}</span>`;
+  const teamBox = k => {
+    const r = rosterOf(k), mine = MYSEAT === k;
+    return `<section class="lteam ${k} ${mine?'mine':''} ${READY[k]?'ready':''}">
+      <div class="lthead"><span class="emb">${k}</span><div><b>ทีม ${k}</b><small>${k==='A'?'ฝั่งน้ำเงิน':'ฝั่งแดง'} · ${r.length} คน</small></div><span class="rdy">${READY[k] ? '✅ พร้อม' : r.length ? '⏳ รอ' : '—'}</span></div>
+      <div class="lmembers">${r.map((u,i) => `<span class="lmem ${u===USER.uid?'me':''}">${av(u)}<span class="nm">${i===0?'👑 ':''}${esc(shortName(u))}${u===USER.uid?' (คุณ)':''}</span>${IS_HOST && u!==USER.uid?`<a href="#" class="kick" data-l="kick${k}:${u}" title="ให้ออก">✕</a>`:''}</span>`).join('') || '<span class="empty">ยังไม่มีสมาชิก — สแกน QR เพื่อเข้าทีม</span>'}</div>
+      <div class="lact">
+        ${!MYSEAT && !IS_HOST ? `<button class="btn big ${k==='A'?'teamA':'teamB'}" data-l="sit${k}">เข้าร่วมทีม ${k}</button>` : ''}
+        ${mine ? `<button class="btn big ${READY[k]?'ghost':'summon'}" data-l="rdy${k}">${READY[k]?'ยกเลิกพร้อม':'ทีมเราพร้อม ✔'}</button><button class="btn ghost sm" data-l="up${k}">ออกจากทีม</button>` : ''}
+      </div></section>`;
   };
   const link = joinLink(ROOM);
-  showScr(`${LOGO()}
-    <div class="lobbyhead"><div><div class="zhint">รหัสห้อง</div><div class="code">${ROOM}</div></div>
-      ${IS_HOST ? `<div><div class="zhint">รหัสผ่าน</div><div class="code pw">${esc(ROOM_PW)}</div></div>` : ''}
-      <div class="qr" id="lobbyQR"></div></div>
-    <p class="note" style="text-align:center">สแกน QR หรือเปิด <b>${esc(link)}</b> แล้วใส่รหัสผ่าน · เลือกทีม แล้วกด “พร้อม” — เกมเริ่มเมื่อทั้งสองทีมพร้อม</p>
-    <div class="seats">${seatBox('A')}<div class="vs">VS</div>${seatBox('B')}</div>
-    <p class="note" style="text-align:center">${IS_HOST ? (MYSEAT ? 'คุณเป็นเจ้าของห้องและเล่นทีม ' + MYSEAT : 'เครื่องนี้เป็นจอกลาง — ฉายขึ้นทีวีได้เลย') : 'ผู้สร้างห้อง: ' + esc(ROOMINFO ? ROOMINFO.hostName : '')} · การ์ดในมือของแต่ละทีมเห็นเฉพาะทีมตัวเอง</p>
-    <div class="mfoot"><button class="btn ghost" data-l="leave">ออกจากห้อง</button></div>`);
+  const status = !phoneOn.A || !phoneOn.B ? 'รอนักเรียนเข้าทีมให้ครบทั้งสองฝั่ง…' : !(READY.A && READY.B) ? 'รอทั้งสองทีมกด “ทีมเราพร้อม”…' : 'กำลังเริ่มเกม…';
+  showLanding(`<div class="lobby">
+    <div class="lobtop">${LOGO()}<span class="modetag ${drill?'drill':'real'} big">${drill?'🏋️ โหมดซ้อม · เอฟเฟคไม่เกิดผล':'⚔ เล่นจริง · เอฟเฟคครบ'}</span></div>
+    <div class="roomcard ${IS_HOST?'':'noqr'}">
+      <div class="rc-info">
+        <div class="zhint">รหัสห้อง</div><div class="digits">${ROOM.split('').map(d=>`<span>${d}</span>`).join('')}</div>
+        ${IS_HOST ? `<div class="zhint">รหัสผ่าน</div><div class="pwbig">${esc(ROOM_PW)}</div>` : ''}
+        ${IS_HOST?'':'<div class="zhint">ส่งรหัสห้องนี้ให้เพื่อนที่ยังไม่ได้เข้าห้อง</div>'}<div class="howto"><span><b>1</b>สแกน QR / เปิดลิงก์</span><span><b>2</b>ใส่รหัสผ่าน</span><span><b>3</b>เลือกทีม</span><span><b>4</b>กดพร้อม</span></div>
+        <div class="lnk">${esc(link)}</div>
+      </div>
+      ${IS_HOST?'<div class="qr" id="lobbyQR"></div>':''}
+    </div>
+    <div class="lteams">${teamBox('A')}<div class="vs">VS</div>${teamBox('B')}</div>
+    <div class="lobmsg">${status}</div>
+    <p class="note" style="text-align:center">${IS_HOST ? (MYSEAT ? 'คุณเป็นเจ้าของห้องและอยู่ทีม ' + MYSEAT : 'เครื่องนี้เป็นจอกลาง — ฉายขึ้นทีวีได้เลย') : 'ผู้สร้างห้อง: ' + esc(ROOMINFO ? ROOMINFO.hostName : '')}
+      · 👑 ผู้คุมการ์ด${ROOMINFO && ROOMINFO.rot===false?'คือคนแรกของทีม':'หมุนเวียนทุกเทิร์น'} · ✋ ผู้ตอบหมุนเวียนทุกข้อ · การ์ดในมือเห็นเฉพาะทีมตัวเอง</p>
+    <div class="mfoot" style="justify-content:center"><button class="btn ghost" data-l="leave">ออกจากห้อง</button></div>
+  </div>`);
   scrEl.onclick = lobbyClick;
-  drawQR('lobbyQR', link, 170);
+  drawQR('lobbyQR', link, 220);
 }
 async function lobbyClick(e){
   const b = e.target.closest('[data-l]'); if(!b) return;
-  const v = b.dataset.l, k = v.slice(-1);
+  e.preventDefault();
+  const v = b.dataset.l, k = v.startsWith('kick') ? v[4] : v.slice(-1);
   try{
-    if(v.startsWith('sit')) await rr('seats/' + k).transaction(cur => cur ? undefined : USER.uid);
+    if(v.startsWith('sit')) await joinTeam(k);
     if(v.startsWith('rdy')) await rr('ready/' + k).set(!READY[k]);
-    if(v.startsWith('up')){ await rr('ready/' + k).remove(); await rr('seats/' + k).remove(); }
-    if(v.startsWith('kick')){ await rr('ready/' + k).remove(); await rr('seats/' + k).remove(); }
+    if(v.startsWith('up')){ if(rosterOf(k).length <= 1) await rr('ready/' + k).remove(); await rr(`teams/${k}/${USER.uid}`).remove(); }
+    if(v.startsWith('kick')){ const u = v.split(':')[1]; await rr(`teams/${k}/${u}`).remove(); }
     if(v === 'leave') leaveRoom();
-  }catch(err){ alertBox(fbErr(err)); }
+  }catch(err){ alertBox(err.message || fbErr(err)); }
 }
-function alertBox(t){ const n = document.querySelector('.scr .note'); if(n){ n.textContent = t; n.style.color = '#ffb4c4'; } }
+function alertBox(t){ const n = document.querySelector('#scr .lobmsg') || document.querySelector('#scr .note'); if(n){ n.textContent = t; n.style.color = '#ffb4c4'; } }
 function hostStart(){
-  newGame(teamName('A'), teamName('B'), !!(ROOMINFO && ROOMINFO.exp));
+  newGame(teamName('A'), teamName('B'), !!(ROOMINFO && ROOMINFO.exp), !!(ROOMINFO && ROOMINFO.drill));
   onRoomChange();
 }
 function loadQR(){
@@ -244,13 +326,51 @@ async function drawQR(id, text, size){
 }
 function showRoomPanel(){
   if(!ROOM) return showSetup();
+  const list = k => rosterOf(k).map(u => `${u===controllerOf(k)?'👑 ':''}${esc(shortName(u))}`).join(', ') || '—';
   openModal(`<h2>🔑 ห้อง ${ROOM}</h2>
     <div class="lobbyhead"><div><div class="zhint">รหัสห้อง</div><div class="code">${ROOM}</div></div>
       ${IS_HOST?`<div><div class="zhint">รหัสผ่าน</div><div class="code pw">${esc(ROOM_PW)}</div></div>`:''}<div class="qr" id="panelQR"></div></div>
-    <p>ทีม A: <b>${esc(teamName('A'))}</b> · ทีม B: <b>${esc(teamName('B'))}</b></p>
-    <p class="note">ถ้ามือถือผู้เล่นหลุด ให้สแกน QR แล้วเข้าห้องเดิมด้วยบัญชีเดิม ระบบจะคืนที่นั่งให้อัตโนมัติ</p>
+    <p>ทีม A: <b>${list('A')}</b><br>ทีม B: <b>${list('B')}</b></p>
+    <p class="note">นักเรียนเข้าทีมเพิ่มระหว่างเกมได้: สแกน QR → ใส่รหัสผ่าน → เลือกทีม · ถ้ามือถือหลุด ให้เข้าห้องเดิมด้วยบัญชีเดิม</p>
     <div class="mfoot"><button class="btn ghost" onclick="leaveRoom()">ปิดห้อง / ออก</button><button class="btn" onclick="closeModal()">ปิด</button></div>`);
   drawQR('panelQR', joinLink(ROOM), 150);
+}
+
+/* ---------- บทบาทในทีม: 👑 ผู้คุมการ์ด (หมุนเวียนทุกเทิร์น) · ✋ ผู้ตอบคำถาม (หมุนเวียนทุกข้อ) ---------- */
+function controllerOf(k){
+  if(!ROOM || !state) return null;
+  const r = rosterOf(k); if(!r.length) return null;
+  const off = (state.ctlOff || {})[k] || 0;
+  const n = (ROOMINFO && ROOMINFO.rot === false) ? off : Math.floor((state.turnNo - 1) / 2) + off;
+  return r[n % r.length];
+}
+function rotateController(k){
+  state.ctlOff = state.ctlOff || {}; state.ctlOff[k] = (state.ctlOff[k] || 0) + 1;
+  say(`👑 ผู้คุมการ์ดทีม ${k} คนใหม่: ${nameOf(controllerOf(k))}`);
+}
+function assignAnswerer(p, manual=false){
+  if(!ROOM || !state || !p) return;
+  const k = p.team, r = rosterOf(k); if(!r.length) return;
+  state.ansIdx = state.ansIdx || {A:0, B:0};
+  const ctl = controllerOf(k);
+  let u = null;
+  for(let i = 0; i < r.length; i++){
+    u = r[(state.ansIdx[k]++) % r.length];
+    if(r.length < 2 || u !== ctl) break;
+  }
+  p.au = u; p.an = nameOf(u);
+  if(pendingCb && state.pending === p) pendingCb.at = Date.now();
+  if(manual) say(`✋ เปลี่ยนผู้ตอบ: ${p.an}`);
+}
+function onTurnStart(){
+  if(state.practice) return tutTurnStart();
+  if(!ROOM) return;
+  const r = rosterOf(state.turn);
+  if(r.length > 1){ const c = controllerOf(state.turn); say(`${msg.text} · 👑 ${nameOf(c)} คุมการ์ด`); }
+}
+function ctlHTML(){
+  if(!ROOM || !state) return '';
+  return `<div class="ctlline">${['A','B'].map(k => { const c = controllerOf(k); return c ? `<span class="${k}">👑 ${k}: ${esc(shortName(c))}</span>` : ''; }).join(' ')}</div>`;
 }
 
 /* ---------- โฮสต์: ส่งสถานะ / รับคำสั่ง ---------- */
@@ -259,8 +379,9 @@ function snapshot(){
   const T = t => ({ n:t.name, h:t.hand.map(c=>[c.uid,c.name,c.revealedUntil?1:0]), f:t.fusionZone.map(c=>c?[c.uid,c.name]:null), lk:[0,1].map(i=>isLocked(t,i)?1:0),
     s:t.sandhiSlot?(t.sandhiSlot.mtype||'vowel_sandhi'):0, c:t.completedZone.map(x=>x?x.cid:null), cu:t.completedZone.map(x=>x&&x.used?1:0), x:t.extraDeck.length, xc:t.extraDeck.map(x=>x.cid), m:t.mainDeck.length,
     d:t.discard.length, dt:t.discard.length?t.discard[t.discard.length-1].name:null, df:t.defenses.map(d=>DEF_LABEL[d.kind]) });
-  return { turn:state.turn, round:state.round, phase:state.phase, hd:state.hasDrawn?1:0, sm:state.summoned||state.summonLost?1:0,
-    win:state.winner, exp:state.exp?1:0, tl:state.timeLeft, tt:state.turnLeft, pz:state.paused?1:0, sz:Object.fromEntries(MTYPES.map(mt=>[mt,pileCount(mt)])),
+  return { turn:state.turn, turnNo:state.turnNo, round:state.round, phase:state.phase, hd:state.hasDrawn?1:0, sm:state.summoned||state.summonLost?1:0,
+    win:state.winner, exp:state.exp?1:0, dr:state.drill?1:0, tl:state.timeLeft, tt:state.turnLeft, pz:state.paused?1:0, pr:state.practice?1:0, sz:Object.fromEntries(MTYPES.map(mt=>[mt,pileCount(mt)])),
+    ct:{A:controllerOf('A'), B:controllerOf('B')}, hs:(state.history||[]).map(h=>[h.k,h.cid]),
     msg:msg.text, tone:msg.tone, p:state.pending, A:T(state.teamA), B:T(state.teamB) };
 }
 /* สนามสาธารณะ: ปิดชื่อการ์ดในมือ (ยกเว้นใบที่ถูกเปิดเผย) และตัวเลือกที่เป็นความลับ */
@@ -278,16 +399,22 @@ let syncT = null;
 function scheduleSync(){ clearTimeout(syncT); syncT = setTimeout(syncNow, 60); }
 function syncNow(){
   if(MODE === 'P' && !IS_HOST) return;
-  if(state){ try{ localStorage.setItem(SAVE_KEY + (ROOM?'-'+ROOM:''), JSON.stringify({state, uidN})); }catch(e){} }
+  if(state && !state.practice){ try{ localStorage.setItem(SAVE_KEY + (ROOM?'-'+ROOM:''), JSON.stringify({state, uidN})); }catch(e){} }
   if(!ROOM || !IS_HOST || !DB) return;
   const t = Date.now();
   rr('public').set({j: JSON.stringify(publicSnap()), t}).catch(e => console.warn(e));
   if(state){ ['A','B'].forEach(k => rr('private/' + k).set({j: JSON.stringify(privFor(k)), t}).catch(e => console.warn(e))); }
 }
+/* ตรวจสิทธิ์: ต้องเป็นสมาชิกทีม · ตอบคำถามได้เฉพาะ ✋ ผู้ตอบ · การกระทำอื่นเฉพาะ 👑 ผู้คุมการ์ด */
 function onAction(d){
   if(!d || !state) return;
   if(d.team !== 'A' && d.team !== 'B') return;
-  if(SEATS[d.team] !== d.uid) return;                // ต้องเป็นเจ้าของที่นั่งเท่านั้น
+  if(ROOM){
+    if(!(TEAMS[d.team] && TEAMS[d.team][d.uid])) return;
+    const p = state.pending;
+    if(d.a === 'answer'){ if(p && p.au && p.au !== d.uid) return; }
+    else { const c = controllerOf(d.team); if(c && c !== d.uid){ say(`ทีม ${d.team}: เทิร์นนี้ ${nameOf(c)} เป็นผู้คุมการ์ด`, 'bad'); return render(); } }
+  }
   handleRemote({data:d});
 }
 function handleRemote(m){
@@ -313,7 +440,7 @@ function handleRemote(m){
     case 'end': return act('endturn');
   }
 }
-/* โฮสต์ที่เป็นผู้เล่นด้วย: แสดงมุมมองผู้เล่นจากสถานะในเครื่อง */
+/* โฮสต์ที่เป็นผู้เล่นด้วย (หรือโหมดฝึกหัดบนมือถือ): แสดงมุมมองผู้เล่นจากสถานะในเครื่อง */
 function hostPlayerView(){
   if(!(IS_HOST && MYSEAT && state)) return;
   const pub = publicSnap(), pv = privFor(MYSEAT);
@@ -343,24 +470,31 @@ function goPhone(){
   document.body.classList.add('phone'); document.documentElement.style.overflow = 'auto';
 }
 function pEmit(data){
-  if(IS_HOST) return handleRemote({data:{team:MYSEAT, ...data}});
+  if(IS_HOST) return ROOM ? onAction({team:MYSEAT, uid:USER.uid, ...data}) : handleRemote({data:{team:MYSEAT, ...data}});
   if(!MYSEAT) return;
   rr('actions').push({team:MYSEAT, uid:USER.uid, ...data, t:firebase.database.ServerValue.TIMESTAMP}).catch(e => { phoneConn = 'lost'; renderPhone(); });
 }
 function renderPhone(){
   const el = document.getElementById('phone');
-  if(!ME){ el.innerHTML = `<div class="ph-wait">คุณเป็นผู้ชมในห้องนี้ (ไม่มีที่นั่ง)<br><br><button class="btn ghost" onclick="leaveRoom()">ออกจากห้อง</button></div>`; return; }
-  const head = (st, cls) => `<div class="ph-head ${ME}"><span class="tn">ทีม ${ME}</span><span>${S&&S[ME]?esc(S[ME].n):''}</span><span class="st ${cls||''}">${st}</span>
-    ${S&&!S.none?`<span class="sub"><b class="ptt" id="ptt">⌛ ${S.tt ?? ''} วิ</b> · ★ ทีม A ${S.A.c.filter(Boolean).length}/4 · ทีม B ${S.B.c.filter(Boolean).length}/4 · ⏱ ${fmtTime(S.tl)}${S.pz?' ⏸':''} · รอบ ${S.round} · ห้อง ${ROOM}</span>`:''}</div>`;
-  const diag = `<div class="zhint" style="text-align:center;margin-top:16px">เวอร์ชัน ${APP_VER} · ห้อง ${ROOM} · ${phoneConn==='ok'?'🟢 ออนไลน์':'🔴 ขาดการเชื่อมต่อ'} · ${esc(myName())} · <a href="#" onclick="leaveRoom();return false">ออกจากห้อง</a></div>`;
+  if(!ME){ el.innerHTML = `<div class="ph-wait">${LOGO()}คุณยังไม่ได้อยู่ทีมไหน — เลือกทีมเพื่อเข้าร่วมเล่น<br><br>
+      <div class="ph-act"><button class="btn teamA" onclick="joinTeam('A').catch(e=>alert(e.message))">เข้าร่วมทีม A</button><button class="btn teamB" onclick="joinTeam('B').catch(e=>alert(e.message))">เข้าร่วมทีม B</button></div><br>
+      <button class="btn ghost" onclick="leaveRoom()">ออกจากห้อง</button></div>`; lastPhoneHTML = ''; return; }
+  const head = (st, cls) => `<div class="ph-head ${ME}"><span class="tn">ทีม ${ME}</span><span>${S&&S[ME]?esc(S[ME].n):''}</span>${S&&S.dr?'<span class="modetag drill">🏋️ ซ้อม</span>':''}<span class="st ${cls||''}">${st}</span>
+    ${S&&!S.none?`<span class="sub">${S.pr?'🎓 ฝึกหัด':`<b class="ptt" id="ptt">⌛</b>`} · ★ ทีม A ${S.A.c.filter(Boolean).length}/4 · ทีม B ${S.B.c.filter(Boolean).length}/4${S.pr?'':` · ⏱ <span id="ptl"></span>${S.pz?' ⏸':''}`} · รอบ ${S.round}${ROOM?' · ห้อง '+ROOM:''}</span>`:''}</div>`;
+  const diag = ROOM ? `<div class="zhint" style="text-align:center;margin-top:16px">เวอร์ชัน ${APP_VER} · ห้อง ${ROOM} · ${phoneConn==='ok'?'🟢 ออนไลน์':'🔴 ขาดการเชื่อมต่อ'} · ${esc(myName())} · <a href="#" onclick="showGlossary();return false">📖 คลังคำ</a> · <a href="#" onclick="leaveRoom();return false">ออกจากห้อง</a></div>`
+    : `<div class="zhint" style="text-align:center;margin-top:16px">เวอร์ชัน ${APP_VER} · <a href="#" onclick="showGlossary();return false">📖 คลังคำ</a> · <a href="#" onclick="tutExit();return false">ออกจากโหมดฝึกหัด</a></div>`;
   if(!S || S.none){ el.innerHTML = head('รอเริ่มเกม') + `<div class="ph-wait">รอให้ทั้งสองทีมกดพร้อม…</div>` + diag; return; }
-  const me = S[ME], o = S[other(ME)], OK = other(ME), myTurn = S.turn === ME, p = S.p;
-  let html = head(S.win ? (S.win===ME?'🏆 ชนะ!':'จบเกม') : myTurn ? '▶ ตาของคุณ' : `รอทีม ${S.turn}`, myTurn && !S.win ? 'go' : '');
+  const me = S[ME], o = S[other(ME)], OK = other(ME), p = S.p;
+  const ctl = S.ct && S.ct[ME], iCtl = !ROOM || !ctl || ctl === myUid();
+  const myTurn = S.turn === ME && iCtl, teamTurn = S.turn === ME;
+  let html = head(S.win ? (S.win===ME?'🏆 ชนะ!':'จบเกม') : myTurn ? '▶ ตาของคุณ' : teamTurn ? '▶ ตาทีมเรา' : `รอทีม ${S.turn}`, teamTurn && !S.win ? 'go' : '');
+  if(ROOM && ctl && !S.win) html += `<div class="ph-role ${iCtl?'me':''}">${iCtl ? '👑 คุณเป็น <b>ผู้คุมการ์ด</b> ของทีมในเทิร์นนี้' : `👑 ผู้คุมการ์ดทีมเรา: <b>${esc(nameOf(ctl))}</b> — ช่วยกันวางแผน แต่ให้ผู้คุมเป็นคนกด`}</div>`;
   const smallComp = (arr, cu=[]) => arr.map((cid,i)=> cid ? `<div class="card click ${cu[i]?'used':''}" data-m="z:${cid}">${compFaceHTML(COMP[cid])}${isDefense(COMP[cid])?`<span class="dtag ${cu[i]?'off':''}">${cu[i]?'ใช้แล้ว':'🛡'}</span>`:''}</div>` : `<div class="slot cslot"><span></span></div>`).join('');
   const revealed = o.h.filter(c=>c[2]);
-  html += `<div class="ph-timer ${myTurn?'me':''}"><div class="lbl">${S.win?'จบเกม':myTurn?'⏳ เวลาเทิร์นของเรา':'⏳ เวลาเทิร์นทีม '+S.turn}</div>
-    <div class="num" id="ptt2">${S.tt ?? ''}</div><div class="tbar"><i id="ptbar" style="width:${100*(S.tt??45)/45}%"></i></div>
-    ${myTurn && !S.win ? `<div class="zhint">${S.sm?'✔ อัญเชิญแล้วในเทิร์นนี้ (ได้เทิร์นละ 1 ใบ) — กดจบเทิร์นได้เลย':'อัญเชิญคำสมบูรณ์ได้ 1 ใบ · หมดเวลาจะจบเทิร์นอัตโนมัติ'}</div>`:''}</div>`;
+  html += S.pr ? `<div class="ph-timer prac"><div class="lbl">🎓 โหมดฝึกหัด — ไม่จับเวลา (เกมจริงเทิร์นละ 45 วินาที)</div></div>`
+    : `<div class="ph-timer ${teamTurn?'me':''}"><div class="lbl">${S.win?'จบเกม':teamTurn?'⏳ เวลาเทิร์นของเรา':'⏳ เวลาเทิร์นทีม '+S.turn}</div>
+    <div class="num" id="ptt2"></div><div class="tbar"><i id="ptbar"></i></div>
+    ${teamTurn && !S.win ? `<div class="zhint">${S.sm?'✔ อัญเชิญแล้วในเทิร์นนี้ (ได้เทิร์นละ 1 ใบ) — กดจบเทิร์นได้เลย':'อัญเชิญคำสมบูรณ์ได้ 1 ใบ · หมดเวลาจะจบเทิร์นอัตโนมัติ'}</div>`:''}</div>`;
   html += `<section class="ph-side opp ${OK}">
     <div class="ph-tt"><span class="tm">ทีม ${OK}</span>${esc(o.n)} <span class="r">★ ${o.c.filter(Boolean).length}/4</span></div>
     <div class="ph-xrow"><div class="card pile click" data-m="xopp" style="--cw:40px">${backFaceHTML('X')}<span class="count">${o.x}</span></div><span class="zhint">Extra Deck ${OK} · แตะเพื่อดูคำที่ยังอัญเชิญได้</span></div>
@@ -390,22 +524,23 @@ function renderPhone(){
   if(false){
   } else if(p){
     if(p.type === 'question'){
-      const mine = p.team === ME;
-      sheet = `<h4>คำถาม ${p.i+1}/${p.n} · ${mine?'ทีมเราตอบ':'ทีม '+p.team+' ตอบ'}</h4><div class="qt">${esc(p.q)}</div>
+      const ours = p.team === ME, mine = ours && (!ROOM || !p.au || p.au === myUid());
+      const who = ours ? (p.au && ROOM ? (mine ? '✋ <b>คุณเป็นผู้ตอบข้อนี้!</b> (ปรึกษาทีมได้)' : `✋ ผู้ตอบ: <b>${esc(p.an||'')}</b> — ช่วยกันคิดได้ แต่ให้ผู้ตอบเป็นคนกด`) : 'ทีมเราตอบ') : 'ทีม '+p.team+' ตอบ';
+      sheet = `<h4>คำถาม ${p.i+1}/${p.n} · ${who}</h4><div class="qt">${esc(p.q)}</div>
         <div class="qopts">${p.opts.map((o,i)=>{ let cls=''; if(p.revealed){ if(i===p.ci) cls='ok'; else if(i===p.picked) cls='no'; }
           return `<button class="btn qo ${cls}" ${mine && !p.revealed ? `data-m="qa${i}"` : ''}>${esc(o)}</button>`; }).join('')}</div>
-        ${p.revealed ? `<div class="ph-msg ${p.correct?'good':'bad'}">${p.correct?'✓ ถูกต้อง!':'✗ ยังไม่ถูก — คำตอบคือ “'+esc(p.a)+'”'}</div>` : mine ? '' : '<div class="zhint">รอคู่แข่งตอบ…</div>'}`;
+        ${p.revealed ? `<div class="ph-msg ${p.correct?'good':'bad'}">${p.correct?'✓ ถูกต้อง!':'✗ ยังไม่ถูก — คำตอบคือ “'+esc(p.a)+'”'}</div>${p.ex?`<div class="qex">💡 ${esc(p.ex)}</div>`:''}` : mine ? '' : `<div class="zhint">${ours?'รอผู้ตอบเลือกคำตอบ…':'รอคู่แข่งตอบ…'}</div>`}`;
     }
-    else if(p.type === 'offer' && p.team === ME){ const c = COMP[p.cid];
+    else if(p.type === 'offer' && p.team === ME && iCtl){ const c = COMP[p.cid];
       sheet = `<h4>ใช้เอฟเฟค “${esc(c.effect.name)}” ?</h4><div class="zhint">${esc(c.effect.description)}</div>
         <div class="ph-act"><button class="btn ghost" data-m="offer0">ไม่ใช้</button><button class="btn summon" data-m="offer1">ใช้ (ตอบคำถาม)</button></div>`; }
-    else if(p.type === 'counter' && p.team === ME)
-      sheet = `<h4>🛡 ${esc(p.title)}</h4><div class="zhint">แตะการ์ดป้องกันเพื่อใช้ (ใช้แล้วหมดสิทธิ์) · เหลือ <b id="pct">${p.left}</b> วินาที</div>
+    else if(p.type === 'counter' && p.team === ME && iCtl)
+      sheet = `<h4>🛡 ${esc(p.title)}</h4><div class="zhint">แตะการ์ดป้องกันเพื่อใช้ (ใช้แล้วหมดสิทธิ์) · เหลือ <b id="pct"></b> วินาที</div>
         <div class="mgrid">${p.opts.map((cid,i)=>`<figure><div class="card pick" data-m="ct${i}">${compFaceHTML(COMP[cid])}</div><figcaption>${esc(COMP[cid].name)}<br><small>${esc(DEFENSE[COMP[cid].effect.op].label)}</small></figcaption></figure>`).join('')}</div>
         <div class="ph-act"><button class="btn ghost" data-m="ctnone">ไม่ป้องกัน</button></div>`;
     else if(p.type === 'counter')
-      sheet = `<h4>⚔️ รอทีม ${p.team} ตัดสินใจป้องกัน…</h4><div class="zhint">“${esc(p.atk)}” · เหลือ <b id="pct">${p.left}</b> วินาที</div>`;
-    else if(p.type === 'choose' && p.team === ME)
+      sheet = `<h4>⚔️ รอ${p.team===ME?'ผู้คุมการ์ดทีมเรา':'ทีม '+p.team} ตัดสินใจป้องกัน…</h4><div class="zhint">“${esc(p.atk)}” · เหลือ <b id="pct"></b> วินาที</div>`;
+    else if(p.type === 'choose' && p.team === ME && iCtl)
       sheet = `<h4>${esc(p.title)}</h4><div class="zhint">${esc(p.sub)}</div><div class="mgrid">${p.opts.map((o,i)=>`<div class="card pick" data-m="ch${i}">${optFace(o)}</div>`).join('')}</div>`;
     else sheet = `<h4>รอทีม ${p.team}…</h4><div class="zhint">${esc(p.title||'')}</div>`;
   } else if(castMenu && myTurn){
@@ -415,26 +550,34 @@ function renderPhone(){
     const nm = (me.h.find(c=>c[0]===phoneSel)||[])[1] || '';
     sheet = `<h4>“${esc(nm)}”</h4><div class="ph-act"><button class="btn" data-m="pl0">วางช่อง 1</button><button class="btn" data-m="pl1">วางช่อง 2</button><button class="btn no" data-m="disc">ทิ้ง</button><button class="btn ghost" data-m="zr:${esc(nm)}">🔍 ขยาย</button><button class="btn ghost" data-m="h${phoneSel}">ยกเลิก</button></div>`;
   }
-  if(S.win) sheet = `<h4>${S.win===ME?'🏆 ทีมเราชนะ!':'จบเกม — ทีม '+S.win+' ชนะ'}</h4><div class="ph-act"><button class="btn ghost" onclick="leaveRoom()">ออกจากห้อง</button></div>`;
+  if(S.win) sheet = `<h4>${S.win===ME?'🏆 ทีมเราชนะ!':'จบเกม — ทีม '+S.win+' ชนะ'}</h4><div class="zhint">📖 คำที่อัญเชิญในเกมนี้ — ทบทวนหลักการก่อนคุยกับครู</div>
+    <div class="ph-recap">${(S.hs||[]).map(([k,cid]) => { const c = COMP[cid]; return c ? `<div class="rc ${k}"><b>${esc(c.name)}</b> <span class="zhint">${esc(c.reading||'')} · ทีม ${k}</span><div>${esc(cExplain(c))}</div></div>` : ''; }).join('') || '<span class="zhint">ไม่มี</span>'}</div>
+    <div class="ph-act">${ROOM?'<button class="btn ghost" onclick="leaveRoom()">ออกจากห้อง</button>':'<button class="btn" onclick="tutExit()">กลับหน้าแรก</button>'}</div>`;
   if(sheet) html += `<div class="ph-sheet">${sheet}</div>`;
+  if(teamTurn && !iCtl && !S.win) html += `<div class="ph-bar wait">👑 ${esc(nameOf(ctl))} กำลังคุมการ์ด…</div>`;
   html += myTurn && !S.win ? `<div class="ph-bar"><button class="btn" data-m="draw" ${S.hd?'disabled':''}>จั่ว</button><button class="btn summon" data-m="summon" ${S.sm?'disabled':''}>⚡ อัญเชิญ</button><button class="btn ghost" data-m="end">จบเทิร์น</button></div>` : '';
   const y = window.scrollY;
   const out = html + diag;
   if(out !== lastPhoneHTML){ el.innerHTML = out; lastPhoneHTML = out; window.scrollTo(0, y); }
+  phoneTick();
+  if(typeof afterRender === 'function' && !IS_HOST) afterRender();
 }
 let lastPhoneHTML = '';
-setInterval(() => {                                    // นับถอยหลังบนมือถือระหว่างรอข้อมูลรอบถัดไป
-  if(!S || S.none || S.win || S.pz) return;
-  const el = Math.floor((Date.now() - lastStateAt) / 1000);
-  const p = S.p, a = document.getElementById('ptt'), b = document.getElementById('pct');
-  if(b && p && p.type === 'counter') b.textContent = Math.max(0, p.left - el);
-  if(S.tt != null && !(p && p.type === 'counter') && !(p && p.type === 'question' && p.revealed)){
-    const v = Math.max(0, S.tt - el);
-    if(a){ a.textContent = `⌛ ${v} วิ`; a.classList.toggle('low', v <= 10); }
-    const n = document.getElementById('ptt2'); if(n){ n.textContent = v; n.parentElement.classList.toggle('low', v <= 10); }
-    const bar = document.getElementById('ptbar'); if(bar) bar.style.width = (100*v/45) + '%';
-  }
-}, 1000);
+/* นาฬิกาบนมือถือ: นับถอยหลังเองจากค่าล่าสุดที่ได้รับ — ไม่วาดหน้าจอใหม่ทั้งหน้าทุกวินาที (แก้อาการกระตุก) */
+function phoneTick(){
+  if(!S || S.none) return;
+  const el = Math.floor((Date.now() - lastStateAt) / 1000), p = S.p, run = !S.win && !S.pz && !S.pr;
+  const b = document.getElementById('pct');
+  if(b && p && p.type === 'counter') b.textContent = Math.max(0, (p.left ?? 15) - (run ? el : 0));
+  const tl = document.getElementById('ptl'); if(tl && S.tl != null) tl.textContent = fmtTime(Math.max(0, S.tl - (run ? el : 0)));
+  if(S.tt == null) return;
+  const frozen = !run || (p && p.type === 'counter') || (p && p.type === 'question' && p.revealed);
+  const v = Math.max(0, S.tt - (frozen ? 0 : el));
+  const a = document.getElementById('ptt'); if(a){ a.textContent = `⌛ ${v} วิ`; a.classList.toggle('low', v <= 10); }
+  const n = document.getElementById('ptt2'); if(n){ n.textContent = v; n.parentElement.classList.toggle('low', v <= 10); }
+  const bar = document.getElementById('ptbar'); if(bar) bar.style.width = (100*v/45) + '%';
+}
+setInterval(phoneTick, 1000);
 /* หน้าต่างดู Extra Deck / การ์ด: แยกจากสนาม ไม่ถูกวาดใหม่ตอนข้อมูลเกมอัปเดต (จึงไม่กระตุก) · แตะพื้นที่ว่างรอบ ๆ เพื่อปิด */
 let ovEl = null;
 function renderOverlay(){
@@ -483,12 +626,16 @@ function closeOverlay(){
 function phoneClick(e){
   const b = e.target.closest('[data-m]'); if(!b || b.disabled) return;
   const v = b.dataset.m;
+  const ctl = S && S.ct && S.ct[ME];
+  if(ROOM && ctl && ctl !== myUid() && /^(draw|summon|end|pl\d|un\d|uncast|cast|castmenu|disc|ch\d|ct|offer|h)/.test(v)){
+    return toast(`👑 เทิร์นนี้ ${nameOf(ctl)} เป็นผู้คุมการ์ด — กดค้างที่การ์ดเพื่อขยายดูได้`);
+  }
   if(v==='xme'||v==='xopp'){ xView = v==='xme'?'me':'opp'; zoomCid = null; return renderOverlay(); }
   if(v.startsWith('z:')){ zoomCid = v.slice(2); return renderOverlay(); }
   if(v.startsWith('zr:')){ zoomRoot = v.slice(3); xView = null; zoomCid = null; return renderOverlay(); }
   if(v==='castmenu'){ castMenu = !castMenu; phoneSel = null; return renderPhone(); }
   if(v.startsWith('cast:')){ castMenu = false; pEmit({a:'cast', m:v.slice(5)}); return renderPhone(); }
-  if(v.startsWith('qa')) return pEmit({a:'answer', i:+v.slice(2)});
+  if(v.startsWith('qa')){ const p = S && S.p; if(ROOM && p && p.au && p.au !== myUid()) return toast(`✋ ผู้ตอบข้อนี้คือ ${p.an}`); return pEmit({a:'answer', i:+v.slice(2)}); }
   if(v==='ctnone') return pEmit({a:'counter', i:null});
   if(v.startsWith('ct')) return pEmit({a:'counter', i:+v.slice(2)});
   if(v[0]==='h'){ castMenu = false; phoneSel = phoneSel === v.slice(1) ? null : v.slice(1); return renderPhone(); }
@@ -522,9 +669,9 @@ phoneEl.addEventListener('pointermove', e => { if(lpTimer && lpStart && Math.hyp
 phoneEl.addEventListener('contextmenu', e => { if(e.target.closest('[data-zr],[data-m^="z:"]')) e.preventDefault(); });
 
 /* ---------- เริ่มต้นแอป ---------- */
-function startOffline(){
+function startOffline(drill){
   online = false; ROOM = null; closeScr(); MODE = 'TV';
-  document.body.classList.remove('phone'); render(); showSetup();
+  document.body.classList.remove('phone'); render(); showSetup(drill === undefined ? false : drill);
 }
 (function boot(){
   document.getElementById('sparkles').innerHTML = Array.from({length:24},()=>`<i style="left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${(Math.random()*3).toFixed(2)}s"></i>`).join('');
