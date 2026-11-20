@@ -319,13 +319,14 @@
   {
    "id": "R21",
    "name": "ราม",
-   "meaning": "พระราม",
-   "image": null,
+   "meaning": "พระราม, ผู้เป็นที่รื่นรมย์",
+   "image": "assets/roots/R21.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review",
+   "reviewStatus": "from_card_art",
    "used": [
     "ราเมศวร"
-   ]
+   ],
+   "roman": "RĀMA"
   },
   {
    "id": "R22",
@@ -422,13 +423,14 @@
   {
    "id": "R29",
    "name": "คม",
-   "meaning": "การไป",
-   "image": null,
+   "meaning": "การไป, การเดินทาง",
+   "image": "assets/roots/R29.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review",
+   "reviewStatus": "from_card_art",
    "used": [
     "สังคม"
-   ]
+   ],
+   "roman": "GAMA"
   },
   {
    "id": "R30",
@@ -1119,24 +1121,25 @@
    ],
    "magic": "vowel_sandhi",
    "effect": {
-    "name": "ศาสตราแห่งวีรบุรุษ",
-    "description": "ป้องกันรากศัพท์ฝ่ายตนจากเอฟเฟค 1 ครั้ง เมื่อป้องกันสำเร็จจั่ว 1 ใบ — เลือกใช้เมื่อโดนความสามารถ",
-    "op": "shield_then_draw",
+    "name": "ราชันบัญชาสวรรค์",
+    "description": "เมื่ออัญเชิญสำเร็จ เลือกการ์ดรากศัพท์จากสำรับ 2 ใบขึ้นมือ จากนั้นสับสำรับ",
+    "op": "search_deck",
     "params": {
-     "charges": 1,
-     "draw": 1
+     "n": 2
     },
-    "requiresExtraQuestion": false,
-    "timing": "reaction_when_targeted"
+    "requiresExtraQuestion": true
    },
-   "image": null,
+   "image": "assets/extra/C17.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review",
+   "reviewStatus": "from_card_art",
    "enabledForGradedPlay": false,
    "reading": "รา-เมด-สวน",
    "meaning": "พระรามผู้เป็นเจ้า",
    "change": "อะ + อี → เอ",
-   "explain": "คำสนธิ (สระสนธิ): ราม + อีศวร เสียงกลมกลืนกัน อะ + อี → เอ → ราเมศวร = พระรามผู้เป็นเจ้า"
+   "explain": "คำสนธิ (สระสนธิ): ราม + อีศวร เสียงกลมกลืนกัน อะ + อี → เอ → ราเมศวร = พระรามผู้เป็นเจ้า",
+   "rarity": "LEGENDARY",
+   "roman": "RAMESUAN",
+   "artName": "ราเมศวร"
   },
   {
    "id": "C18",
@@ -1148,24 +1151,25 @@
    ],
    "magic": "vowel_sandhi",
    "effect": {
-    "name": "บัญชาจักรพรรดิ",
-    "description": "ดูการ์ด 4 ใบบนสุด เลือกขึ้นมือ 1 ใบ และเลือกอีก 1 ใบวางไว้บนสุดของสำรับ",
-    "op": "look_take_and_stack",
+    "name": "พระบัญชาแห่งราชัน",
+    "description": "เมื่ออัญเชิญสำเร็จ เลือกการ์ดรากศัพท์ 1 ใบจากสำรับขึ้นมือ จากนั้นสับสำรับ",
+    "op": "search_deck",
     "params": {
-     "look": 4,
-     "take": 1,
-     "stack": 1
+     "n": 1
     },
     "requiresExtraQuestion": true
    },
-   "image": null,
+   "image": "assets/extra/C18.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review",
+   "reviewStatus": "from_card_art",
    "enabledForGradedPlay": false,
    "reading": "นะ-เรด-สวน",
    "meaning": "ผู้เป็นใหญ่ในหมู่คน พระราชา",
    "change": "อะ + อี → เอ",
-   "explain": "คำสนธิ (สระสนธิ): นร + อีศวร เสียงกลมกลืนกัน อะ + อี → เอ → นเรศวร = ผู้เป็นใหญ่ในหมู่คน พระราชา"
+   "explain": "คำสนธิ (สระสนธิ): นร + อีศวร เสียงกลมกลืนกัน อะ + อี → เอ → นเรศวร = ผู้เป็นใหญ่ในหมู่คน พระราชา",
+   "rarity": "EPIC",
+   "roman": "NARESUAN",
+   "artName": "นเรศวร"
   },
   {
    "id": "C19",
@@ -1177,23 +1181,23 @@
    ],
    "magic": "vowel_sandhi",
    "effect": {
-    "name": "รุ่งอรุณแห่งความหวัง",
-    "description": "จั่ว 2 ใบ แล้วเลือกการ์ดในมือ 1 ใบวางไว้ใต้สำรับ",
-    "op": "draw_then_bottom",
-    "params": {
-     "draw": 2,
-     "bottom": 1
-    },
+    "name": "รุ่งอรุณแห่งโชคชะตา",
+    "description": "เมื่ออัญเชิญสำเร็จ ดูการ์ดบนสุดของสำรับ 3 ใบ เลือก 1 ใบขึ้นมือ และนำอีก 2 ใบไว้ใต้สำรับตามลำดับที่ต้องการ",
+    "op": "look3_take1_bottom",
+    "params": {},
     "requiresExtraQuestion": true
    },
-   "image": null,
+   "image": "assets/extra/C19.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review",
+   "reviewStatus": "from_card_art",
    "enabledForGradedPlay": false,
    "reading": "สุ-ริ-โย-ไท",
    "meaning": "ดวงอาทิตย์ขึ้น",
    "change": "อะ + อุ → โอ",
-   "explain": "คำสนธิ (สระสนธิ): สุริย + อุทัย เสียงกลมกลืนกัน อะ + อุ → โอ → สุริโยทัย = ดวงอาทิตย์ขึ้น"
+   "explain": "คำสนธิ (สระสนธิ): สุริย + อุทัย เสียงกลมกลืนกัน อะ + อุ → โอ → สุริโยทัย = ดวงอาทิตย์ขึ้น",
+   "rarity": "RARE",
+   "roman": "SURIYOTHAI",
+   "artName": "สุริโยทัย"
   },
   {
    "id": "C20",
@@ -1205,24 +1209,23 @@
    ],
    "magic": "vowel_sandhi",
    "effect": {
-    "name": "ม่านรัตติกาล",
-    "description": "ยกเลิกเอฟเฟคฝ่ายตรงข้าม 1 ครั้ง และสุ่มเปิดเผยรากศัพท์ในมือฝ่ายตรงข้าม 1 ใบ — เลือกใช้เมื่อโดนความสามารถ",
-    "op": "counter_and_reveal",
-    "params": {
-     "charges": 1,
-     "reveal": 1
-    },
-    "requiresExtraQuestion": false,
-    "timing": "reaction_when_targeted"
+    "name": "จันทราบัญชาชะตา",
+    "description": "เมื่ออัญเชิญสำเร็จ เลือกการ์ดบนมือฝ่ายตน 1 ใบ สับกลับเข้าสำรับ จากนั้นจั่วการ์ด 2 ใบ",
+    "op": "return_hand_draw2",
+    "params": {},
+    "requiresExtraQuestion": true
    },
-   "image": null,
+   "image": "assets/extra/C20.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review",
+   "reviewStatus": "from_card_art",
    "enabledForGradedPlay": false,
    "reading": "จัน-ทฺรุ-ปะ-รา-คา",
    "meaning": "จันทรคราส ดวงจันทร์ถูกบดบัง",
    "change": "อะ + อุ → อุ",
-   "explain": "คำสนธิ (สระสนธิ): จันทร + อุปราคา เสียงกลมกลืนกัน อะ + อุ → อุ → จันทรุปราคา = จันทรคราส ดวงจันทร์ถูกบดบัง"
+   "explain": "คำสนธิ (สระสนธิ): จันทร + อุปราคา เสียงกลมกลืนกัน อะ + อุ → อุ → จันทรุปราคา = จันทรคราส ดวงจันทร์ถูกบดบัง",
+   "rarity": "EPIC",
+   "roman": "CHANDRUPARAKA",
+   "artName": "จันทรุปราคา"
   },
   {
    "id": "C21",
@@ -1265,21 +1268,24 @@
    "magic": "vowel_sandhi",
    "effect": {
     "name": "ปาฏิหาริย์พลิกชะตา",
-    "description": "เปิด 3 ใบบนสุด เลือกขึ้นมือ 1 ใบ ส่งกองทิ้ง 1 ใบ อีกใบวางใต้สำรับ",
-    "op": "look_take_discard_bottom",
-    "params": {
-     "look": 3
-    },
-    "requiresExtraQuestion": true
+    "description": "เทิร์นละครั้ง เมื่อการ์ดคำสมบูรณ์ฝ่ายตนกำลังจะถูกทำลาย สามารถยกเลิกการทำลายนั้น และจั่วการ์ด 1 ใบ",
+    "op": "counter_destroy_completed_draw",
+    "params": {},
+    "requiresExtraQuestion": false,
+    "timing": "reaction_when_targeted",
+    "perTurn": true
    },
-   "image": null,
+   "image": "assets/extra/C22.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review",
+   "reviewStatus": "from_card_art",
    "enabledForGradedPlay": false,
    "reading": "มะ-หัด-สะ-จัน",
    "meaning": "น่าพิศวงอย่างยิ่ง",
    "change": "อา + อะ → อะ",
-   "explain": "คำสนธิ (สระสนธิ): มหา + อัศจรรย์ เสียงกลมกลืนกัน อา + อะ → อะ → มหัศจรรย์ = น่าพิศวงอย่างยิ่ง"
+   "explain": "คำสนธิ (สระสนธิ): มหา + อัศจรรย์ เสียงกลมกลืนกัน อา + อะ → อะ → มหัศจรรย์ = น่าพิศวงอย่างยิ่ง",
+   "rarity": "LEGENDARY",
+   "roman": "MAHATSACHAN",
+   "artName": "มหัศจรรย์"
   },
   {
    "id": "C23",
@@ -1291,23 +1297,23 @@
    ],
    "magic": "vowel_sandhi",
    "effect": {
-    "name": "มหาปราการ",
-    "description": "ป้องกันรากศัพท์ที่วางเตรียมไว้ทั้ง 2 ช่องจากเอฟเฟค 1 ครั้ง แล้วจั่ว 1 ใบ — เลือกใช้เมื่อโดนความสามารถ",
-    "op": "shield_both_staged_and_draw",
-    "params": {
-     "draw": 1
-    },
-    "requiresExtraQuestion": false,
-    "timing": "reaction_when_targeted"
+    "name": "มหาสมบัติแห่งฟ้า",
+    "description": "เมื่ออัญเชิญสำเร็จ จั่วการ์ดจากสำรับ 2 ใบ จากนั้นเลือกการ์ดบนมือ 1 ใบส่งลงกองทิ้ง",
+    "op": "draw2_discard1",
+    "params": {},
+    "requiresExtraQuestion": true
    },
-   "image": null,
+   "image": "assets/extra/C23.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review",
+   "reviewStatus": "from_card_art",
    "enabledForGradedPlay": false,
    "reading": "มะ-โห-ลาน",
    "meaning": "ใหญ่โตยิ่ง",
    "change": "อา + โอ → โอ",
-   "explain": "คำสนธิ (สระสนธิ): มหา + โอฬาร เสียงกลมกลืนกัน อา + โอ → โอ → มโหฬาร = ใหญ่โตยิ่ง"
+   "explain": "คำสนธิ (สระสนธิ): มหา + โอฬาร เสียงกลมกลืนกัน อา + โอ → โอ → มโหฬาร = ใหญ่โตยิ่ง",
+   "rarity": "RARE",
+   "roman": "MAHOLAN",
+   "artName": "มโหฬาร"
   },
   {
    "id": "C24",

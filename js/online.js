@@ -6,7 +6,7 @@
      · private/A, B    = การ์ดในมือของแต่ละทีม (กฎฐานข้อมูลให้อ่านได้เฉพาะเจ้าของที่นั่ง + โฮสต์)
    - ผู้เล่นส่งคำสั่งเข้า actions/ แล้วโฮสต์เป็นผู้ตรวจและดำเนินการ
    ===================================================================== */
-const APP_VER = '20261120c';
+const APP_VER = '20261120d';
 let AUTH = null, DB = null, USER = null;
 let ROOM = null, ROOM_PW = '', IS_HOST = false, MYSEAT = null, ROOMINFO = null;
 let TEAMS = {}, READY = {}, NAMES = {};

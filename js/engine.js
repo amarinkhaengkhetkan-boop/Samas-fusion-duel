@@ -360,19 +360,21 @@ const DEFENSE = {
   counter_new_summon_effect_and_draw: {blocks:'any', bonus:'draw',    label:'ยกเลิกเอฟเฟคคำที่เพิ่งอัญเชิญ แล้วจั่ว 1 ใบ'},
   shield_both_staged_and_draw:        {blocks:'staged', bonus:'draw', label:'กันรากศัพท์ที่วางเตรียมทั้ง 2 ช่อง แล้วจั่ว 1 ใบ'},
   counter_and_recover:                {blocks:'destroyDiscard', bonus:'recover', label:'ยกเลิกการทำลาย/บังคับทิ้ง แล้วนำรากศัพท์จากกองทิ้งขึ้นมือ 1 ใบ'},
+  counter_destroy_completed_draw:     {blocks:'completedDestroy', bonus:'draw', perTurn:true, label:'ยกเลิกการทำลายคำสมบูรณ์ของเรา แล้วจั่ว 1 ใบ (เทิร์นละครั้ง)'},
   counter_and_destroy_root:           {blocks:'roots', bonus:'destroyRoot', label:'ยกเลิกเอฟเฟคที่เล็งรากศัพท์ของเรา แล้วทำลายรากศัพท์ฝ่ายตรงข้าม 1 ใบ'}
 };
 const isDefense = c => !!DEFENSE[c.effect.op];
 function defenseFits(c, info){
   const b = DEFENSE[c.effect.op].blocks;
   if(b === 'any') return true;
+  if(b === 'completedDestroy') return info.target === 'completed' && info.cat === 'destroy';
   if(b === 'roots') return info.target === 'hand' || info.target === 'staged';
   if(b === 'destroyDiscard') return info.cat === 'destroy' || info.cat === 'discard';
   if(b === 'stagedDestroy') return info.target === 'staged' && info.cat === 'destroy';
   if(b === 'staged') return info.target === 'staged';
   return false;
 }
-const readyDefenses = (t, info) => filled(t.completedZone).filter(x => !x.used && isDefense(compOf(x)) && (!info || defenseFits(compOf(x), info)));
+const readyDefenses = (t, info) => filled(t.completedZone).filter(x => !x.used && x.usedTurn !== state.turnNo && isDefense(compOf(x)) && (!info || defenseFits(compOf(x), info)));
 const COUNTER_SECONDS = 15;
 const TURN_SECONDS = 45;
 function addDef(t, kind, charges, span, src, extra={}){ t.defenses.push({kind, charges, until: state.turnNo + span, src, ...extra}); }
@@ -403,7 +405,7 @@ function answerCounter(idx){
   state.pending = null; pendingCb = null;
   if(!(idx >= 0 && idx < ready.length)){ say(`ทีม ${tgt.key} ไม่ป้องกัน`); return apply(); }
   const x = ready[idx], c = compOf(x), d = DEFENSE[c.effect.op];
-  x.used = true;                                                     // ใช้แล้วหมดสิทธิ์
+  if(d.perTurn) x.usedTurn = state.turnNo; else x.used = true;        // ใช้แล้วหมดสิทธิ์ (ยกเว้นการ์ดที่ใช้ได้เทิร์นละครั้ง)
   let extra = '';
   if(d.bonus === 'draw' && drawCards(tgt, 1)) extra = ' และจั่ว 1 ใบ';
   if(d.bonus === 'reveal'){ const o = team(other(tgt.key)); if(o.hand.length){ const v = pick(o.hand); v.revealedUntil = state.turnNo + 2; extra = ` และเปิดเผย “${v.name}” ในมือทีม ${o.key}`; } }
@@ -554,6 +556,41 @@ function resolveEffect(t, c){
       return hostile(o, {name:nm, target:'staged', cat:'other'}, () => true, () =>
         chooseCard(K, nm, `เลือกรากศัพท์ที่ทีม ${o.key} วางไว้ 1 ใบ ส่งกลับสำรับแล้วสับ`, stagedOf(o), s => {
           o.fusionZone[s.i] = null; o.mainDeck.push(s.c); shuffle(o.mainDeck); say(`👑 ${nm}: ส่ง “${s.c.name}” กลับสำรับทีม ${o.key}`, 'good'); peek(); }));
+    }
+    /* ---------- สระสนธิ: จั่ว/ค้นหา ---------- */
+    case 'draw2_discard1': {
+      const got = drawCards(t, 2);
+      if(!t.hand.length) return done(`${nm}: สำรับ ${K} ว่าง`, 'bad');
+      return chooseCard(K, nm, `จั่วแล้ว ${got} ใบ — เลือกการ์ดบนมือ 1 ใบส่งลงกองทิ้ง`, t.hand, v => {
+        t.hand.splice(t.hand.indexOf(v),1); t.discard.push(v); done(`💰 ${nm}: ${t.name} จั่ว ${got} ใบ แล้วทิ้ง “${v.name}”`, 'good'); });
+    }
+    case 'return_hand_draw2': {
+      if(!t.hand.length){ const g = drawCards(t, 2); return done(`🌙 ${nm}: จั่ว ${g} ใบ`, 'good'); }
+      return chooseCard(K, nm, 'เลือกการ์ดบนมือ 1 ใบสับกลับเข้าสำรับ แล้วจั่ว 2 ใบ', t.hand, v => {
+        t.hand.splice(t.hand.indexOf(v),1); t.mainDeck.push(v); shuffle(t.mainDeck); const g = drawCards(t, 2);
+        done(`🌙 ${nm}: สับ “${v.name}” กลับสำรับ แล้วจั่ว ${g} ใบ`, 'good'); });
+    }
+    case 'look3_take1_bottom': {
+      const top = lookTop(t, 3);
+      if(!top.length) return done(`สำรับ ${K} ว่าง`, 'bad');
+      return chooseCard(K, nm, `ดู ${top.length} ใบบนสุด — เลือก 1 ใบขึ้นมือ`, top, v => {
+        removeFromDeck(t, v); t.hand.push(v);
+        const rest = top.filter(x => x !== v);
+        if(rest.length < 2){ rest.forEach(x => { removeFromDeck(t, x); t.mainDeck.unshift(x); }); return done(`☀️ ${nm}: เลือก “${v.name}” ขึ้นมือ ที่เหลือไว้ใต้สำรับ`, 'good'); }
+        chooseCard(K, nm, 'เลือกใบที่จะวางไว้ใต้สุดของสำรับก่อน (อีกใบจะอยู่เหนือมัน)', rest, b => {
+          rest.forEach(x => removeFromDeck(t, x));
+          t.mainDeck.unshift(rest.find(x => x !== b)); t.mainDeck.unshift(b);
+          done(`☀️ ${nm}: เลือก “${v.name}” ขึ้นมือ และเรียง 2 ใบไว้ใต้สำรับ`, 'good'); });
+      });
+    }
+    case 'search_deck': {
+      const n = p.n || 1, picked = [];
+      const step = () => {
+        if(picked.length >= n || !t.mainDeck.length){ shuffle(t.mainDeck); return done(`👑 ${nm}: นำ ${picked.map(x=>'“'+x.name+'”').join(' ')} จากสำรับขึ้นมือ แล้วสับสำรับ`, 'good'); }
+        const seen = {}, uniq = t.mainDeck.filter(c => seen[c.name] ? false : (seen[c.name] = true));
+        chooseCard(K, nm, `เลือกรากศัพท์จากสำรับ (${picked.length+1}/${n})`, uniq, v => { removeFromDeck(t, v); t.hand.push(v); picked.push(v); step(); });
+      };
+      return step();
     }
     case 'look_top_take_one': {
       const top = lookTop(t, p.look||3);
