@@ -6,7 +6,7 @@
      · private/A, B    = การ์ดในมือของแต่ละทีม (กฎฐานข้อมูลให้อ่านได้เฉพาะเจ้าของที่นั่ง + โฮสต์)
    - ผู้เล่นส่งคำสั่งเข้า actions/ แล้วโฮสต์เป็นผู้ตรวจและดำเนินการ
    ===================================================================== */
-const APP_VER = '20261120b';
+const APP_VER = '20261120c';
 let AUTH = null, DB = null, USER = null;
 let ROOM = null, ROOM_PW = '', IS_HOST = false, MYSEAT = null, ROOMINFO = null;
 let TEAMS = {}, READY = {}, NAMES = {};
@@ -179,6 +179,7 @@ async function createRoom(pw, seat, exp, rot=true, drill=false){
     await rr('secret').set({pwHash:h});
     await rr('members/' + USER.uid).set(h);
     await rr('names/' + USER.uid).set(myName());
+    setDevRole(code, seat ? 'host-A' : 'host-tv');
     if(seat) await joinTeam(seat);
     saveLast(); enterRoom();
   }catch(e){ ROOM = null; showHome('สร้างห้องไม่สำเร็จ: ' + fbErr(e), 'create'); }
@@ -193,6 +194,20 @@ async function joinRoom(code, pw){
     await rr('names/' + USER.uid).set(myName());
     saveLast(); enterRoom();
   }catch(e){ ROOM = null; showHome('เข้าห้องไม่สำเร็จ: ' + fbErr(e), 'join'); }
+}
+/* บทบาทของเครื่องนี้ในห้อง (เก็บในเครื่อง) */
+let HOST_TV = false;
+const getDevRole = code => { try{ return localStorage.getItem('fd-role-' + code); }catch(e){ return null; } };
+const setDevRole = (code, r) => { try{ localStorage.setItem('fd-role-' + code, r); }catch(e){} };
+function askDevRole(){
+  return new Promise(res => {
+    showLanding(`${heroHTML()}<div class="panel glass"><div class="phead"><span class="pico">📱</span><div><h3>บัญชีนี้เป็นเจ้าของห้อง ${esc(ROOM)}</h3>
+      <div class="zhint">เครื่องนี้จะทำหน้าที่อะไร?</div></div></div>
+      <div class="choice2"><button class="choice" id="rPlayer"><span class="ci">🎮</span><b>เข้าร่วมเป็นผู้เล่น</b><small>เลือกทีมแล้วเล่นบนเครื่องนี้ (จอกลางยังอยู่เครื่องเดิม)</small></button>
+      <button class="choice" id="rHost"><span class="ci">🖥</span><b>เป็นจอกลาง/คุมเกม</b><small>ใช้เมื่อเปิดใหม่บนเครื่องที่ฉายทีวี (เช่น ล้างประวัติเบราว์เซอร์)</small></button></div></div>`);
+    document.getElementById('rPlayer').onclick = () => res('player');
+    document.getElementById('rHost').onclick = () => res('host-tv');
+  });
 }
 async function joinTeam(k){
   try{ await rr(`teams/${k}/${USER.uid}`).set(firebase.database.ServerValue.TIMESTAMP); }
@@ -215,11 +230,19 @@ function listen(path, cb, ev='value', onErr){
 /* ---------- เข้าห้องแล้ว: ล็อบบี้ ---------- */
 async function enterRoom(){
   ROOMINFO = (await rr('info').once('value')).val();
-  IS_HOST = ROOMINFO && ROOMINFO.host === USER.uid;
+  /* บัญชีเดียวกันเปิดได้หลายเครื่อง: เครื่องที่สร้างห้องเท่านั้นที่รันเกม (โฮสต์) · เครื่องอื่นของบัญชีครูเป็นผู้เล่นได้ */
+  const sameAcct = !!(ROOMINFO && ROOMINFO.host === USER.uid);
+  let role = getDevRole(ROOM);
+  if(sameAcct && !role){
+    role = await askDevRole();
+    setDevRole(ROOM, role);
+  }
+  IS_HOST = sameAcct && role && role.startsWith('host');
+  HOST_TV = IS_HOST && role === 'host-tv';
   history.replaceState(null, '', `?room=${ROOM}`);
   listen('teams', s => {
     TEAMS = s.val() || {};
-    MYSEAT = ['A','B'].find(k => TEAMS[k] && TEAMS[k][USER.uid]) || null;
+    MYSEAT = HOST_TV ? null : (['A','B'].find(k => TEAMS[k] && TEAMS[k][USER.uid]) || null);
     if(IS_HOST && state){ state.teamA.name = teamName('A'); state.teamB.name = teamName('B'); }
     onRoomChange();
   });
