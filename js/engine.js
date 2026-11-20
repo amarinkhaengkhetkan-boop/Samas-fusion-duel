@@ -62,15 +62,11 @@ let pendingCb = null;                       // callback ของขั้นต
 let phoneOn = {A:false, B:false};           // มือถือทีมเชื่อมต่ออยู่หรือไม่
 let roomCode = null, R = null, roomState = 'idle';
 
+/* สำรับรากศัพท์: สร้างจากคำสมบูรณ์ที่ใช้ในเกม — รากศัพท์ของทุกคำเข้าสำรับ (คำละ 1 ชุด) จึงมีคู่ให้ฟิวชันเสมอ
+   รากศัพท์ที่ยังไม่มีคำให้อัญเชิญจะไม่เข้าสำรับ (ดูได้ในคลังคำ) */
 function buildMainDeck(key, exp){
-  const roots = GD.roots.filter(r => inRelease(r, exp));
-  const names = roots.map(r => r.name);
-  if(names.length < RULES.mainDeckSizePerTeam){
-    const usage = {};
-    GD.completedCards.filter(c => inRelease(c, exp)).forEach(c => c.rootNames.forEach(n => usage[n] = (usage[n]||0) + 1));
-    const order = roots.slice().sort((a,b) => (usage[b.name]||0) - (usage[a.name]||0) || a.id.localeCompare(b.id));
-    for(let i=0; names.length < RULES.mainDeckSizePerTeam; i++) names.push(order[i % order.length].name);
-  }
+  const names = [];
+  GD.completedCards.filter(c => inRelease(c, exp)).forEach(c => c.rootNames.forEach(n => { if(ROOT[n]) names.push(n); }));
   return shuffle(names.map(n => ({uid:uid(key+'r'), kind:'root', owner:key, name:n})));
 }
 function makeTeam(key, name, exp){
@@ -113,7 +109,9 @@ function endTurn(){
   state.turnNo++; state.round = Math.ceil(state.turnNo/2); state.turn = other(state.turn);
   [state.teamA, state.teamB].forEach(x => {
     x.defenses = x.defenses.filter(d => d.until >= state.turnNo);
-    if(x.locks) Object.keys(x.locks).forEach(k => { if(x.locks[k] < state.turnNo){ delete x.locks[k]; } });
+    if(x.locks) Object.keys(x.locks).forEach(k => { const L = lockOf(x, k); if(L && L.to < state.turnNo) delete x.locks[k]; });
+    if(x.brands) Object.keys(x.brands).forEach(k => { if(x.brands[k].to < state.turnNo) delete x.brands[k]; });
+    if(x.mark && x.mark.to < state.turnNo) delete x.mark;
     x.hand.forEach(c => { if(c.revealedUntil && c.revealedUntil < state.turnNo) delete c.revealedUntil; });
   });
   startTurn();
@@ -151,7 +149,7 @@ function act(a, k, x){
       break;
     case 'fusion': {
       const i = +x;
-      if(isLocked(t, i)){ say(`🔒 ช่อง ${i+1} ของทีม ${t.key} ถูกล็อก — วางการ์ดไม่ได้จนจบเทิร์นนี้`, 'bad'); break; }
+      if(isLocked(t, i)){ say(`🔒 ช่อง ${i+1} ของทีม ${t.key} ถูกผนึก — วาง ย้าย หรือหยิบการ์ดในช่องนี้ไม่ได้จนกว่าผนึกจะหมด`, 'bad'); break; }
       if(state.selected){
         const hi = t.hand.findIndex(c=>c.uid===state.selected);
         if(hi < 0){ state.selected = null; break; }
@@ -159,6 +157,11 @@ function act(a, k, x){
         if(t.fusionZone[i]) t.hand.push(t.fusionZone[i]);
         t.fusionZone[i] = card; state.selected = null; state.phase = 'PREPARATION';
         say(t.fusionZone.every(Boolean) ? 'รากศัพท์ 2 ใบเชื่อมพลังกันแล้ว — กด ⚡ อัญเชิญ' : `วาง “${card.name}” ลงช่องรากศัพท์ ${i+1}`);
+        /* ตรามรณะ: ถ้าวางรากศัพท์ใบอื่นเพิ่ม การ์ดที่ติดตราถูกทำลาย */
+        if(t.mark && t.mark.to >= state.turnNo && t.mark.uid !== card.uid){
+          const mi = t.fusionZone.findIndex(c => c && c.uid === t.mark.uid);
+          if(mi >= 0){ const dead = t.fusionZone[mi]; t.fusionZone[mi] = null; t.discard.push(dead); delete t.mark; say(`☠ ตรามรณะทำงาน! “${dead.name}” ของทีม ${t.key} ถูกทำลายเพราะวางรากศัพท์เพิ่ม`, 'bad'); }
+        }
       } else if(t.fusionZone[i]){ t.hand.push(t.fusionZone[i]); t.fusionZone[i] = null; say('คืนการ์ดกลับขึ้นมือ'); }
       break;
     }
@@ -184,6 +187,7 @@ const swappedRoots = (c, names) => c.rootNames[0]===names[1] && c.rootNames[1]==
 function trySummon(t){
   if(state.summoned){ say(`เทิร์นนี้อัญเชิญคำสมบูรณ์ไปแล้ว — ลงคำสมบูรณ์ได้เทิร์นละ ${RULES.summonsPerTurn} ใบเท่านั้น`, 'bad'); return render(); }
   if(state.summonLost){ say('เทิร์นนี้เสียสิทธิ์อัญเชิญแล้ว (ตอบคำถามผิด)', 'bad'); return render(); }
+  if(t.fusionZone.some((c,i) => isLocked(t, i))){ say('🔒 มีช่องรากศัพท์ถูกผนึกอยู่ — อัญเชิญไม่ได้จนกว่าผนึกจะหมด', 'bad'); return render(); }
   const mats = filled(t.fusionZone);
   if(mats.length < RULES.fusionSlotsPerTeam){ say('วางรากศัพท์ใน Fusion Zone ให้ครบ 2 ช่องก่อน', 'bad'); return render(); }
   const names = mats.map(c=>c.name);
@@ -221,7 +225,7 @@ const activeRoots = () => GD.roots.filter(r => inRelease(r, state.exp));
 const QT_LABEL = {combine:'รวมรากศัพท์เป็นคำ', type:'จำแนกสมาส/สนธิ', rootMeaning:'ความหมายรากศัพท์', wordMeaning:'ความหมายของคำ',
   process:'กระบวนการกลมกลืนเสียง', magicType:'ชนิดของสนธิ', why:'เหตุผลการจำแนก', parts:'แยกรากศัพท์'};
 const VOWEL_CHANGES = ['อะ + อิ → อิ','อะ + อิ → เอ','อะ + อุ → อุ','อะ + อุ → โอ','อา + อะ → อะ','อา + อะ → อา','อา + โอ → โอ','อะ + อี → เอ','อิ + อิ → อิ','อา + อิ → อิ'];
-const CONS_CHANGES = ['นิคหิต → ง','นิคหิต → ม','นิคหิต → น','ส → ร','ส → โอ'];
+const CONS_CHANGES = ['นิคหิต → ง','นิคหิต → ม','นิคหิต → น','นิคหิต → ญ','ส → ร','ส → โอ'];
 const SAMAS_WHY = 'นำคำบาลีสันสกฤตมาต่อกันโดยไม่เปลี่ยนรูป', SANDHI_WHY = 'มีการเชื่อมและกลมกลืนเสียงระหว่างคำ';
 const WHY_POOL = [SAMAS_WHY, SANDHI_WHY, 'มีคำไทยแท้ประกอบอยู่ในคำ', 'นำคำที่มีความหมายซ้ำกันมาซ้อนกัน'];
 const cExplain = c => c.explain || `${c.type==='samas'?'คำสมาส':'คำสนธิ'}: ${c.rootNames.join(' + ')} → ${c.name}`;
@@ -295,7 +299,7 @@ function commitSummon(k, xUid){
   t.extraDeck = t.extraDeck.filter(e=>e.uid!==xUid);
   const slot = t.completedZone.findIndex(e=>!e);
   t.completedZone[slot] = x;
-  filled(t.fusionZone).forEach(r => t.discard.push(r));
+  filled(t.fusionZone).forEach(r => t.discard.push(r)); delete t.mark;
   t.fusionZone = Array(RULES.fusionSlotsPerTeam).fill(null);
   returnMagic(t);
   state.summoned = true;
@@ -355,12 +359,14 @@ const DEFENSE = {
   counter_and_reveal:                 {blocks:'any', bonus:'reveal',  label:'ยกเลิก แล้วเปิดเผยมือฝ่ายตรงข้าม 1 ใบ'},
   counter_new_summon_effect_and_draw: {blocks:'any', bonus:'draw',    label:'ยกเลิกเอฟเฟคคำที่เพิ่งอัญเชิญ แล้วจั่ว 1 ใบ'},
   shield_both_staged_and_draw:        {blocks:'staged', bonus:'draw', label:'กันรากศัพท์ที่วางเตรียมทั้ง 2 ช่อง แล้วจั่ว 1 ใบ'},
-  counter_and_recover:                {blocks:'destroyDiscard', bonus:'recover', label:'ยกเลิกการทำลาย/บังคับทิ้ง แล้วนำรากศัพท์จากกองทิ้งขึ้นมือ 1 ใบ'}
+  counter_and_recover:                {blocks:'destroyDiscard', bonus:'recover', label:'ยกเลิกการทำลาย/บังคับทิ้ง แล้วนำรากศัพท์จากกองทิ้งขึ้นมือ 1 ใบ'},
+  counter_and_destroy_root:           {blocks:'roots', bonus:'destroyRoot', label:'ยกเลิกเอฟเฟคที่เล็งรากศัพท์ของเรา แล้วทำลายรากศัพท์ฝ่ายตรงข้าม 1 ใบ'}
 };
 const isDefense = c => !!DEFENSE[c.effect.op];
 function defenseFits(c, info){
   const b = DEFENSE[c.effect.op].blocks;
   if(b === 'any') return true;
+  if(b === 'roots') return info.target === 'hand' || info.target === 'staged';
   if(b === 'destroyDiscard') return info.cat === 'destroy' || info.cat === 'discard';
   if(b === 'stagedDestroy') return info.target === 'staged' && info.cat === 'destroy';
   if(b === 'staged') return info.target === 'staged';
@@ -401,6 +407,14 @@ function answerCounter(idx){
   let extra = '';
   if(d.bonus === 'draw' && drawCards(tgt, 1)) extra = ' และจั่ว 1 ใบ';
   if(d.bonus === 'reveal'){ const o = team(other(tgt.key)); if(o.hand.length){ const v = pick(o.hand); v.revealedUntil = state.turnNo + 2; extra = ` และเปิดเผย “${v.name}” ในมือทีม ${o.key}`; } }
+  if(d.bonus === 'destroyRoot'){
+    const o = team(other(tgt.key)), st = stagedOf(o);
+    say(`🛡 ทีม ${tgt.key} ใช้ “${c.name}” ยกเลิก “${info.name}” สำเร็จ!`, 'good');
+    if(st.length) return chooseCard(tgt.key, c.effect.name, `เลือกรากศัพท์ที่ทีม ${o.key} วางเตรียม 1 ใบเพื่อทำลาย`, st, s => {
+      o.fusionZone[s.i] = null; o.discard.push(s.c); done(`🛡💥 ${c.effect.name}: ยกเลิก “${info.name}” และทำลาย “${s.c.name}” ของทีม ${o.key}`, 'good'); });
+    if(o.hand.length){ const v = pick(o.hand); o.hand.splice(o.hand.indexOf(v),1); o.discard.push(v); return done(`🛡💥 ${c.effect.name}: ยกเลิก “${info.name}” และทำลาย “${v.name}” จากมือทีม ${o.key}`, 'good'); }
+    return done(`🛡 ทีม ${tgt.key} ใช้ “${c.name}” ยกเลิก “${info.name}” สำเร็จ!`, 'good');
+  }
   if(d.bonus === 'recover' && tgt.discard.length){
     say(`🛡 ทีม ${tgt.key} ใช้ “${c.name}” ยกเลิก “${info.name}” สำเร็จ!`, 'good');
     return recover(tgt, r => done(`🛡 ทีม ${tgt.key} ใช้ “${c.name}” ยกเลิก “${info.name}” สำเร็จ! · ${r}`, 'good'));
@@ -417,7 +431,23 @@ function recover(t, then){
     then ? then(`นำ “${c.name}” กลับขึ้นมือ`) : done(`${t.name} นำ “${c.name}” จากกองทิ้งกลับขึ้นมือ`, 'good');
   });
 }
-const isLocked = (t, i) => !!(t.locks && t.locks[i] != null && t.locks[i] >= state.turnNo);
+/* ผนึก/ล็อกช่อง: locks[i] = {from, to} (เลขเทิร์น) · ช่องที่ถูกผนึก วางการ์ดไม่ได้ และการ์ดที่อยู่ในช่องใช้อัญเชิญไม่ได้ */
+const lockOf = (t, i) => { const v = t.locks && t.locks[i]; return v == null ? null : typeof v === 'number' ? {from:0, to:v} : v; };
+const isLocked = (t, i) => { const L = lockOf(t, i); return !!(L && L.from <= state.turnNo && state.turnNo <= L.to); };
+function addLock(t, i, from, to){ t.locks = t.locks || {}; const L = lockOf(t, i); t.locks[i] = L ? {from:Math.min(L.from, from), to:Math.max(L.to, to)} : {from, to}; }
+/* เทิร์นถัดไปของทีม k (นับจากเทิร์นปัจจุบัน) */
+const nextTurnOf = k => state.turn === k ? state.turnNo + 2 : state.turnNo + 1;
+/* ตราที่ติดไว้ (สมาคม): ช่องที่มีการ์ด เมื่อการ์ดออกจากช่อง → ผนึกช่องนั้นจนจบเทิร์นถัดไปของเจ้าของ */
+function checkBrands(){
+  if(!state) return;
+  [state.teamA, state.teamB].forEach(t => {
+    if(!t.brands) return;
+    Object.keys(t.brands).forEach(k => { const b = t.brands[k];
+      if(b.to < state.turnNo){ delete t.brands[k]; return; }
+      if(!t.fusionZone[k]){ delete t.brands[k]; addLock(t, +k, state.turnNo, nextTurnOf(t.key)); say(`🔒 ตราพันธนาการทำงาน — ช่อง ${+k+1} ของทีม ${t.key} ถูกผนึก`, 'bad'); }
+    });
+  });
+}
 const MAX_COMPLETED_FOR_DESTROY = 3;   // ห้ามทำลายเมื่อคู่แข่งมีคำสมบูรณ์ครบ 3 ใบแล้ว
 function resolveEffect(t, c){
   const o = team(other(t.key)), e = c.effect, p = e.params || {}, nm = e.name, K = t.key;
@@ -458,16 +488,62 @@ function resolveEffect(t, c){
           o.completedZone[s.i] = null; delete s.x.used; o.extraDeck.push(s.x);
           done(`💥 ${nm}: ทำลาย “${compOf(s.x).name}” ของทีม ${o.key} กลับเข้า Extra Deck (เหลือ ${filled(o.completedZone).length}/${RULES.winAtCompletedCards})`, 'good'); }));
     }
-    /* ล็อกช่องรากศัพท์ว่างของฝ่ายตรงข้าม 1 ช่อง ตลอดเทิร์นถัดไปของฝ่ายตรงข้าม · ใช้ล็อกติดกันไม่ได้ */
-    case 'lock_opponent_fusion_slot': {
-      if(o.locks && Object.keys(o.locks).length) return done(`ทีม ${o.key} มีช่องที่ถูกล็อกอยู่แล้ว — “${nm}” ไม่เกิดผล`, 'bad');
-      if(t.lastLockTurn != null && t.lastLockTurn === state.turnNo - 2) return done(`ล็อกช่องติดกันสองเทิร์นไม่ได้ — “${nm}” ไม่เกิดผล`, 'bad');
-      const slots = o.fusionZone.map((c,i) => c ? null : {slot:i}).filter(Boolean);
-      if(!slots.length) return done(`ทีม ${o.key} ไม่มีช่องรากศัพท์ว่าง — “${nm}” ไม่เกิดผล`, 'bad');
+    /* ---------- นิคหิตสนธิ: ผนึกช่องรากศัพท์ ---------- */
+    case 'lock_opponent_fusion_slot':
+    case 'lock_slot': case 'lock_empty_slot': {
+      const empty = e.op === 'lock_empty_slot' || e.op === 'lock_opponent_fusion_slot';
+      const slots = [0,1].filter(i => !isLocked(o, i) && (!empty || !o.fusionZone[i])).map(i => ({slot:i}));
+      if(!slots.length) return done(`ทีม ${o.key} ไม่มีช่อง${empty?'ว่าง':''}ให้ผนึก — “${nm}” ไม่เกิดผล`, 'bad');
       return hostile(o, {name:nm, target:'staged', cat:'lock'}, () => true, () =>
-        chooseCard(K, nm, `เลือกช่องรากศัพท์ว่างของทีม ${o.key} ที่จะล็อก (ล็อกตลอดเทิร์นถัดไปของทีม ${o.key})`, slots, s => {
-          o.locks = o.locks || {}; o.locks[s.slot] = state.turnNo + 1; t.lastLockTurn = state.turnNo;
-          done(`🔒 ${nm}: ล็อกช่อง ${s.slot+1} ของทีม ${o.key} ตลอดเทิร์นถัดไป`, 'good'); }));
+        chooseCard(K, nm, `เลือกช่องรากศัพท์${empty?'ว่าง':''}ของทีม ${o.key} ที่จะผนึก (จนจบเทิร์นถัดไปของทีม ${o.key})`, slots, s => {
+          addLock(o, s.slot, state.turnNo, nextTurnOf(o.key));
+          done(`🔒 ${nm}: ผนึกช่อง ${s.slot+1} ของทีม ${o.key} จนจบเทิร์นถัดไป${o.fusionZone[s.slot]?' (การ์ดในช่องใช้อัญเชิญไม่ได้)':''}${e.op==='lock_empty_slot'?' · ห้ามย้ายหรือสลับการ์ดเข้าช่องนี้':''}`, 'good'); }));
+    }
+    case 'lock_then_move': {
+      const slots = [0,1].filter(i => !isLocked(o, i) && !o.fusionZone[i]).map(i => ({slot:i}));
+      if(!slots.length) return done(`ทีม ${o.key} ไม่มีช่องว่างให้ผนึก — “${nm}” ไม่เกิดผล`, 'bad');
+      return hostile(o, {name:nm, target:'staged', cat:'lock'}, () => true, () =>
+        chooseCard(K, nm, `เลือกช่องว่างของทีม ${o.key} ที่จะผนึกก่อน — ตราจะย้ายไปอีกช่องในเทิร์นถัดไปของทีม ${o.key} อีกครั้ง`, slots, s => {
+          const n1 = nextTurnOf(o.key), n2 = n1 + 2;
+          addLock(o, s.slot, state.turnNo, n1); addLock(o, 1 - s.slot, n2, n2);
+          done(`🔒 ${nm}: ผนึกช่อง ${s.slot+1} ของทีม ${o.key} จนจบเทิร์นถัดไป แล้วตราจะย้ายไปผนึกช่อง ${2-s.slot} อีก 1 เทิร์น`, 'good'); }));
+    }
+    case 'lock_or_brand': {
+      const slots = [0,1].filter(i => !isLocked(o, i)).map(i => ({slot:i}));
+      if(!slots.length) return done(`ช่องของทีม ${o.key} ถูกผนึกอยู่แล้ว — “${nm}” ไม่เกิดผล`, 'bad');
+      return hostile(o, {name:nm, target:'staged', cat:'lock'}, () => true, () =>
+        chooseCard(K, nm, `เลือกช่องของทีม ${o.key}: ช่องว่างถูกผนึกทันที · ช่องที่มีการ์ดจะถูกติดตรา แล้วผนึกเมื่อการ์ดออกจากช่อง`, slots, s => {
+          if(!o.fusionZone[s.slot]){ addLock(o, s.slot, state.turnNo, nextTurnOf(o.key)); return done(`🔒 ${nm}: ผนึกช่อง ${s.slot+1} ของทีม ${o.key} จนจบเทิร์นถัดไป`, 'good'); }
+          o.brands = o.brands || {}; o.brands[s.slot] = {to: nextTurnOf(o.key)};
+          done(`🔗 ${nm}: ติดตราช่อง ${s.slot+1} ของทีม ${o.key} — ถ้าการ์ด “${o.fusionZone[s.slot].name}” ออกจากช่อง ช่องจะถูกผนึก`, 'good'); }));
+    }
+    case 'lock_both_slots': {
+      return hostile(o, {name:nm, target:'staged', cat:'lock'}, () => true, () => {
+        const to = nextTurnOf(o.key); addLock(o, 0, state.turnNo, to); addLock(o, 1, state.turnNo, to);
+        done(`🔒🔒 ${nm}: ผนึกช่องรากศัพท์ทั้ง 2 ช่องของทีม ${o.key} จนจบเทิร์นถัดไป`, 'good'); });
+    }
+    /* ---------- พยัญชนะสนธิ: ทำลาย ---------- */
+    case 'destroy_completed_permanent': {
+      const list = o.completedZone.map((x,i) => x ? {x, i} : null).filter(Boolean);
+      if(!list.length) return done(`ทีม ${o.key} ยังไม่มีคำสมบูรณ์ — “${nm}” ไม่เกิดผล`, 'bad');
+      if(list.length >= MAX_COMPLETED_FOR_DESTROY) return done(`ทีม ${o.key} มีคำสมบูรณ์ ${list.length} ใบแล้ว — ทำลายไม่ได้ (กติกา: ห้ามทำลายเมื่อมีครบ 3 ใบ)`, 'bad');
+      return hostile(o, {name:nm, target:'completed', cat:'destroy'}, () => true, () =>
+        chooseCard(K, nm, `เลือกคำสมบูรณ์ของทีม ${o.key} 1 ใบ — ถูกทำลายถาวร (อัญเชิญคืนไม่ได้)`, list, s => {
+          o.completedZone[s.i] = null; (o.graveyard = o.graveyard || []).push(s.x);
+          done(`☄️ ${nm}: ทำลาย “${compOf(s.x).name}” ของทีม ${o.key} ถาวร (เหลือ ${filled(o.completedZone).length}/${RULES.winAtCompletedCards})`, 'good'); }));
+    }
+    case 'random_destroy_staged_draw': {
+      return hostile(o, {name:nm, target:'staged', cat:'destroy'}, () => stagedOf(o).length, () => {
+        const full = o.fusionZone.every(Boolean), s = pick(stagedOf(o));
+        o.fusionZone[s.i] = null; o.discard.push(s.c);
+        const got = full && drawCards(t, 1);
+        done(`⚖️ ${nm}: สุ่มทำลาย “${s.c.name}” ของทีม ${o.key}${got?` · ทีม ${K} จั่วเพิ่ม 1 ใบ (คู่แข่งวางครบ 2 ช่อง)`:''}`, 'good'); });
+    }
+    case 'death_mark': {
+      return hostile(o, {name:nm, target:'staged', cat:'destroy'}, () => stagedOf(o).length, () =>
+        chooseCard(K, nm, `เลือกรากศัพท์ที่ทีม ${o.key} วางเตรียม 1 ใบเพื่อติดตรามรณะ`, stagedOf(o), s => {
+          o.mark = {uid: s.c.uid, to: nextTurnOf(o.key)};
+          done(`☠ ${nm}: ติดตรามรณะที่ “${s.c.name}” ของทีม ${o.key} — ถ้าวางรากศัพท์อีกใบ การ์ดนี้จะถูกทำลาย`, 'good'); }));
     }
     case 'return_staged_to_deck_and_peek': {
       say('');
@@ -643,7 +719,7 @@ function arenaSide(t, pos){
       ? ring(`<div class="card click ${x.used?'used':''}" ${da('completed',t.key,i)} data-slot="${i}" data-uid="${x.uid}">${compFaceHTML(compOf(x))}${isDefense(compOf(x))?`<span class="dtag ${x.used?'off':''}">${x.used?'ใช้แล้ว':'🛡 พร้อม'}</span>`:''}</div>`, 'filled')
       : ring(`<span class="rnum" data-slot="${i}">${i+1}</span>`, 'empty')).join('')}</div>`;
   const fus = `<div class="ar-fus fusion-zone" data-team="${t.key}">${t.fusionZone.map((c,i)=> c
-      ? ring(`<div class="card ${isAct?'click':''} ${linked?'linked':''}" ${da('fusion',t.key,i)} data-uid="${c.uid}">${rootFaceHTML(c.name)}</div>`, 'filled big')
+      ? ring(`<div class="card ${isAct?'click':''} ${linked?'linked':''}" ${da('fusion',t.key,i)} data-uid="${c.uid}">${rootFaceHTML(c.name)}${t.mark&&t.mark.uid===c.uid?'<span class="tag skull">☠</span>':''}${t.brands&&t.brands[i]?'<span class="tag brand">🔗</span>':''}${isLocked(t,i)?'<span class="lockbadge">🔒</span>':''}</div>`, `filled big ${isLocked(t,i)?'locked':''}`)
       : isLocked(t,i) ? ring(`<span class="rlbl lockico">🔒<br>ล็อก</span>`, 'empty big locked')
       : ring(`<span class="rlbl">ช่อง ${i+1}</span>`, `empty big ${isAct?'click':''} ${sel?'target':''}`, da('fusion',t.key,i))).join('')}
       ${t.sandhiSlot ? ring(`<div class="card mcard click linked" ${da('sandhiSlot',t.key)}>${magicFaceHTML(t.sandhiSlot.mtype)}</div>`, 'filled small') : ring('<span class="rlbl">เวท</span>', 'empty small')}
@@ -736,6 +812,7 @@ function render(){
   const board = document.getElementById('board');
   if(!state){ board.classList.remove('arena-mode'); board.innerHTML = headerHTML(); return; }
   board.classList.add('arena-mode');
+  checkBrands();
   board.innerHTML = arenaHTML();
   let ph = pendingHTML();
   if(teacherPeek && state.pending && state.pending.type==='choose'){
@@ -886,7 +963,7 @@ function showZoom(id){
 }
 function showZoomComp(c, k){
   openModal(`<div class="zoomwrap"><div class="card">${compFaceHTML(c)}</div><div class="zoominfo">
-    <h3>${esc(c.name)}</h3><p><span class="pill ${c.type}">${c.type==='samas'?'คำสมาส':'คำสนธิ'}</span>${c.release==='expansion'?'<span class="pill exp">ส่วนขยาย</span>':''}${k?` ทีม ${k}`:''}</p>
+    <h3>${esc(c.name)}</h3><p><span class="pill ${c.type}">${c.type==='samas'?'คำสมาส':'คำสนธิ'}</span>${c.rarity?`<span class="pill rar ${c.rarity}">${c.rarity}</span>`:''}${c.release==='expansion'?'<span class="pill exp">ส่วนขยาย</span>':''}${k?` ทีม ${k}`:''}</p>
     <p>วัตถุดิบ: ${esc(c.rootNames.join(' + '))}${c.magic?' + เวท'+magicName(c.magic):''}</p>
     <div class="eff"><b>${esc(c.effect.name)}</b><br>${esc(c.effect.description)}${isDefense(c)?`<br><span class="pill samas">การ์ดป้องกัน</span> ใช้ตอบโต้เมื่อถูกโจมตี · ใช้ได้ 1 ครั้ง`:''}</div>
     ${c.artName && c.artName!==c.name?`<p class="note">ชื่อบนภาพการ์ด: ${esc(c.artName)}</p>`:''}</div></div>
@@ -915,15 +992,15 @@ function showRules(){
     <li>2 ทีม · สมาชิกในทีมใช้มือการ์ดร่วมกัน และเข้าเล่นได้หลายเครื่อง (มือถือคนละเครื่อง)</li>
     <li>บทบาทในทีม: 👑 <b>ผู้คุมการ์ด</b> เป็นคนกดจั่ว/วาง/อัญเชิญ (หมุนเวียนทุกเทิร์น) · ✋ <b>ผู้ตอบ</b> เป็นคนกดตอบคำถาม (หมุนเวียนทุกข้อ) — ทุกคนช่วยกันคิดได้</li>
     <li>เล่นได้ 2 แบบ: เครื่องเดียว (แตะบนจอ) หรือออนไลน์ — ล็อกอิน Google สร้างห้องพร้อมรหัสผ่าน ให้ผู้เล่นสแกน QR เข้าห้อง เลือกทีม แล้วกด “พร้อม” ทั้งสองฝ่ายเกมจึงเริ่ม · การ์ดในมือของแต่ละทีมเห็นเฉพาะทีมตัวเอง</li>
-    <li>สำรับทีมละ ${RULES.mainDeckSizePerTeam} ใบ · เริ่มถือ ${RULES.openingHandSize} ใบ · จั่วเทิร์นละ ${RULES.drawPerTurn} ใบ (ทีมแรกงดจั่วเทิร์นแรก) · สำรับหมดให้ข้ามการจั่ว</li>
+    <li>สำรับรากศัพท์สร้างจากคำสมบูรณ์ในชุดที่เลือก (รากศัพท์ของทุกคำเข้าสำรับ) · เริ่มถือ ${RULES.openingHandSize} ใบ · จั่วเทิร์นละ ${RULES.drawPerTurn} ใบ (ทีมแรกงดจั่วเทิร์นแรก) · สำรับหมดให้ข้ามการจั่ว</li>
     <li>ลำดับเทิร์น: จั่ว → เตรียม → ฟิวชัน → ตอบคำถาม → เอฟเฟค → จบเทิร์น</li>
     <li>วางรากศัพท์ 2 ใบ (คำสนธิต้องร่ายเวทสนธิให้ถูกชนิด: สระสนธิ / พยัญชนะสนธิ / นิคหิตสนธิ) แล้วกด “⚡ อัญเชิญ” ได้เทิร์นละ ${RULES.summonsPerTurn} ครั้ง</li>
     <li>ต้องตอบคำถามแบบเลือกตอบถูก ${RULES.questionsPerSummon} ข้อ จึงอัญเชิญสำเร็จ · ตอบผิด: รากศัพท์ค้างในช่องและเสียสิทธิ์อัญเชิญในเทิร์นนั้น</li>
     <li>การ์ดโจมตี/สนับสนุน: ใช้เอฟเฟคได้ตอนอัญเชิญ (ต้องตอบคำถามเพิ่ม ${RULES.questionsPerEffect} ข้อให้ถูก)</li>
     <li>การ์ดป้องกัน (🛡): ไม่ใช้ตอนอัญเชิญ — เมื่อฝ่ายตรงข้ามใช้เอฟเฟคโจมตี ทีมเรามี ${COUNTER_SECONDS} วินาทีเลือกเปิดการ์ดป้องกันเพื่อยกเลิก · ใช้แล้วหมดสิทธิ์ใช้ซ้ำ</li>
     <li>ลงคำสมบูรณ์ (อัญเชิญ) ได้เทิร์นละ 1 ใบเท่านั้น</li>
-    <li>เอฟเฟคทำลายคำสมบูรณ์: ผู้ใช้เลือกการ์ดคู่แข่ง 1 ใบ การ์ดกลับเข้า Extra Deck ของเจ้าของ (อัญเชิญใหม่ได้) · ใช้ไม่ได้ถ้าคู่แข่งมีคำสมบูรณ์ 3 ใบแล้ว</li>
-    <li>เอฟเฟคล็อกช่อง: ล็อกช่องรากศัพท์ว่างของคู่แข่ง 1 ช่อง ตลอดเทิร์นถัดไปของคู่แข่ง · ล็อกติดกันสองเทิร์นไม่ได้</li>
+    <li><b>พยัญชนะสนธิ — ทำลาย:</b> ทรยศ ส่งคำสมบูรณ์คู่แข่งกลับ Extra Deck (อัญเชิญใหม่ได้) · ทรชน ทำลายคำสมบูรณ์ถาวร · ใช้ไม่ได้ถ้าคู่แข่งมีคำสมบูรณ์ 3 ใบแล้ว · นิรโทษ/ทรลักษณ์ ทำลายรากศัพท์ที่วางเตรียม</li>
+    <li><b>นิคหิตสนธิ — ผนึกช่อง:</b> ช่องที่ถูกผนึก (🔒) วาง ย้าย หรือหยิบการ์ดไม่ได้ และอัญเชิญไม่ได้จนผนึกหมด (จบเทิร์นถัดไปของทีมที่โดน) · ผนึกซ้อนกันได้สูงสุด 2 ช่อง</li>
     <li>ต้องวางรากศัพท์ให้ตรงช่องตามสูตรบนการ์ด: ช่อง 1 = รากศัพท์ตัวหน้า, ช่อง 2 = รากศัพท์ตัวหลัง (เช่น อุทกภัย = ช่อง 1 อุทก · ช่อง 2 ภัย) — วางสลับช่องจะอัญเชิญไม่ได้</li>
     <li>เวลาเทิร์นละ ${TURN_SECONDS} วินาที — หมดเวลาจะจบเทิร์นอัตโนมัติ (ถ้ากำลังตอบคำถามจะนับว่าตอบผิด)</li>
     <li>โหมด <b>⚔ เล่นจริง</b> ใช้เอฟเฟคการ์ดทุกแบบ · โหมด <b>🏋️ ซ้อมเล่น</b> ทุกอย่างเหมือนเกมจริงแต่เอฟเฟคไม่เกิดผล (เหมาะกับการฝึกสร้างคำล้วน ๆ)</li>

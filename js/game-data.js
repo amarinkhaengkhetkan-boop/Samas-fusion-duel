@@ -1,7 +1,7 @@
 /* ฐานข้อมูลการ์ด — แก้ไขได้ที่ไฟล์ game-data.json แล้วคัดลอกมาวางที่นี่ หรือแก้ตรงนี้โดยตรง */
 window.GD = {
  "project": "SAMAS CODEBREAKERS: FUSION DUEL",
- "version": "prototype-data-2026-11-11",
+ "version": "prototype-data-2026-11-20",
  "language": "th",
  "sourceNotes": [
   "Core 15 complete-word cards from prototype manual",
@@ -59,7 +59,9 @@ window.GD = {
   "destroyedCompletedReturnsToExtraDeck": true,
   "destroyCompletedBlockedAtCount": 3,
   "fusionLockTurns": 1,
-  "fusionLockNoConsecutive": true
+  "fusionLockNoConsecutive": false,
+  "locksStack": true,
+  "deckBuiltFromActiveWords": true
  },
  "layout": {
   "orientation": "landscape",
@@ -83,16 +85,27 @@ window.GD = {
    "image": "assets/roots/R01.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R01"
+   "imgClass": "img-R01",
+   "used": [
+    "อุทกภัย"
+   ]
   },
   {
    "id": "R02",
    "name": "ภัย",
-   "meaning": "อันตราย",
+   "meaning": "อันตราย, ความน่ากลัว, สิ่งที่คุกคาม",
    "image": "assets/roots/R02.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R02"
+   "imgClass": "img-R02",
+   "roman": "BHAYA",
+   "used": [
+    "อุทกภัย",
+    "อัคคีภัย",
+    "วาตภัย",
+    "มหาภัย",
+    "นิรภัย"
+   ]
   },
   {
    "id": "R03",
@@ -101,7 +114,10 @@ window.GD = {
    "image": "assets/roots/R03.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R03"
+   "imgClass": "img-R03",
+   "used": [
+    "อัคคีภัย"
+   ]
   },
   {
    "id": "R04",
@@ -110,7 +126,10 @@ window.GD = {
    "image": "assets/roots/R04.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R04"
+   "imgClass": "img-R04",
+   "used": [
+    "วาตภัย"
+   ]
   },
   {
    "id": "R05",
@@ -119,7 +138,12 @@ window.GD = {
    "image": "assets/roots/R05.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R05"
+   "imgClass": "img-R05",
+   "used": [
+    "วิทยาศาสตร์",
+    "ชีววิทยา",
+    "จิตวิทยา"
+   ]
   },
   {
    "id": "R06",
@@ -128,7 +152,11 @@ window.GD = {
    "image": "assets/roots/R06.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R06"
+   "imgClass": "img-R06",
+   "used": [
+    "วิทยาศาสตร์",
+    "ภูมิศาสตร์"
+   ]
   },
   {
    "id": "R07",
@@ -137,7 +165,10 @@ window.GD = {
    "image": "assets/roots/R07.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R07"
+   "imgClass": "img-R07",
+   "used": [
+    "ชีววิทยา"
+   ]
   },
   {
    "id": "R08",
@@ -146,7 +177,10 @@ window.GD = {
    "image": "assets/roots/R08.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R08"
+   "imgClass": "img-R08",
+   "used": [
+    "จิตวิทยา"
+   ]
   },
   {
    "id": "R09",
@@ -155,7 +189,10 @@ window.GD = {
    "image": "assets/roots/R09.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R09"
+   "imgClass": "img-R09",
+   "used": [
+    "ภูมิศาสตร์"
+   ]
   },
   {
    "id": "R10",
@@ -164,7 +201,11 @@ window.GD = {
    "image": "assets/roots/R10.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R10"
+   "imgClass": "img-R10",
+   "used": [
+    "คุณธรรม",
+    "จริยธรรม"
+   ]
   },
   {
    "id": "R11",
@@ -173,7 +214,10 @@ window.GD = {
    "image": "assets/roots/R11.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R11"
+   "imgClass": "img-R11",
+   "used": [
+    "คุณธรรม"
+   ]
   },
   {
    "id": "R12",
@@ -182,7 +226,10 @@ window.GD = {
    "image": "assets/roots/R12.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R12"
+   "imgClass": "img-R12",
+   "used": [
+    "จริยธรรม"
+   ]
   },
   {
    "id": "R13",
@@ -191,7 +238,14 @@ window.GD = {
    "image": "assets/roots/R13.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R13"
+   "imgClass": "img-R13",
+   "used": [
+    "มหาภัย",
+    "มหาคช",
+    "มหรรณพ",
+    "มหัศจรรย์",
+    "มโหฬาร"
+   ]
   },
   {
    "id": "R14",
@@ -200,7 +254,10 @@ window.GD = {
    "image": "assets/roots/R14.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R14"
+   "imgClass": "img-R14",
+   "used": [
+    "มหรรณพ"
+   ]
   },
   {
    "id": "R15",
@@ -209,7 +266,11 @@ window.GD = {
    "image": "assets/roots/R15.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R15"
+   "imgClass": "img-R15",
+   "used": [
+    "นรินทร์",
+    "นเรศวร"
+   ]
   },
   {
    "id": "R16",
@@ -218,7 +279,12 @@ window.GD = {
    "image": "assets/roots/R16.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R16"
+   "imgClass": "img-R16",
+   "used": [
+    "นรินทร์",
+    "เทวินทร์",
+    "คชินทร์"
+   ]
   },
   {
    "id": "R17",
@@ -227,7 +293,10 @@ window.GD = {
    "image": "assets/roots/R17.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R17"
+   "imgClass": "img-R17",
+   "used": [
+    "เทวินทร์"
+   ]
   },
   {
    "id": "R18",
@@ -236,7 +305,11 @@ window.GD = {
    "image": "assets/roots/R18.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R18"
+   "imgClass": "img-R18",
+   "used": [
+    "มหาคช",
+    "คชินทร์"
+   ]
   },
   {
    "id": "R19",
@@ -245,7 +318,11 @@ window.GD = {
    "image": "assets/roots/R19.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R19"
+   "imgClass": "img-R19",
+   "used": [
+    "สุริโยทัย",
+    "สุริยุปราคา"
+   ]
   },
   {
    "id": "R20",
@@ -254,7 +331,11 @@ window.GD = {
    "image": "assets/roots/R20.jpg",
    "release": "core",
    "reviewStatus": "needs_linguistic_review",
-   "imgClass": "img-R20"
+   "imgClass": "img-R20",
+   "used": [
+    "จันทรุปราคา",
+    "สุริยุปราคา"
+   ]
   },
   {
    "id": "R21",
@@ -262,63 +343,109 @@ window.GD = {
    "meaning": "พระราม",
    "image": null,
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review"
+   "reviewStatus": "needs_linguistic_review",
+   "used": [
+    "ราเมศวร"
+   ]
   },
   {
    "id": "R22",
    "name": "อีศวร",
-   "meaning": "ผู้เป็นเจ้า",
-   "image": null,
+   "meaning": "ผู้เป็นใหญ่, ผู้เป็นเจ้า",
+   "image": "assets/roots/R22.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review"
+   "reviewStatus": "needs_linguistic_review",
+   "roman": "ĪŚVARA",
+   "imgClass": "img-R22",
+   "used": [
+    "ราเมศวร",
+    "นเรศวร"
+   ]
   },
   {
    "id": "R23",
    "name": "อุทัย",
-   "meaning": "การขึ้น",
-   "image": null,
+   "meaning": "การขึ้น, การเกิดขึ้น",
+   "image": "assets/roots/R23.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review"
+   "reviewStatus": "needs_linguistic_review",
+   "roman": "UDAYA",
+   "imgClass": "img-R23",
+   "used": [
+    "สุริโยทัย",
+    "สมุทัย"
+   ]
   },
   {
    "id": "R24",
    "name": "จันทร",
    "meaning": "ดวงจันทร์",
-   "image": null,
+   "image": "assets/roots/R24.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review"
+   "reviewStatus": "needs_linguistic_review",
+   "roman": "CANDRA",
+   "imgClass": "img-R24",
+   "used": [
+    "จันทรุปราคา"
+   ]
   },
   {
    "id": "R25",
    "name": "อัศจรรย์",
-   "meaning": "น่าพิศวง",
-   "image": null,
+   "meaning": "น่าพิศวง, น่าประหลาดใจ",
+   "image": "assets/roots/R25.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review"
+   "reviewStatus": "needs_linguistic_review",
+   "roman": "ĀŚCARYA",
+   "imgClass": "img-R25",
+   "used": [
+    "มหัศจรรย์"
+   ]
   },
   {
    "id": "R26",
    "name": "โอฬาร",
-   "meaning": "ใหญ่โต",
-   "image": null,
+   "meaning": "ใหญ่โต, ยิ่งใหญ่",
+   "image": "assets/roots/R26.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review"
+   "reviewStatus": "needs_linguistic_review",
+   "roman": "UḶĀRA",
+   "imgClass": "img-R26",
+   "used": [
+    "มโหฬาร"
+   ]
   },
   {
    "id": "R27",
-   "name": "นิร",
-   "meaning": "ปราศจาก",
-   "image": null,
+   "name": "นิสฺ",
+   "meaning": "ออกจาก, ปราศจาก, ไม่มี",
+   "image": "assets/roots/R27.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review"
+   "reviewStatus": "needs_linguistic_review",
+   "roman": "NIS",
+   "imgClass": "img-R27",
+   "used": [
+    "นิรภัย",
+    "นิรโทษ"
+   ]
   },
   {
    "id": "R28",
    "name": "สํ",
-   "meaning": "ร่วมกัน",
-   "image": null,
+   "meaning": "ร่วมกัน, พร้อมกัน, โดยพร้อมเพรียง",
+   "image": "assets/roots/R28.jpg",
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review"
+   "reviewStatus": "needs_linguistic_review",
+   "roman": "SAṂ",
+   "imgClass": "img-R28",
+   "used": [
+    "สังคม",
+    "สมุทัย",
+    "สังขาร",
+    "สัญจร",
+    "สมาคม",
+    "สังหาร"
+   ]
   },
   {
    "id": "R29",
@@ -326,7 +453,306 @@ window.GD = {
    "meaning": "การไป",
    "image": null,
    "release": "expansion",
-   "reviewStatus": "needs_linguistic_review"
+   "reviewStatus": "needs_linguistic_review",
+   "used": [
+    "สังคม"
+   ]
+  },
+  {
+   "id": "R30",
+   "name": "ราช",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "พระราชา, ผู้เป็นใหญ่",
+   "roman": "RAJA",
+   "image": "assets/roots/R30.jpg",
+   "imgClass": "img-R30",
+   "used": []
+  },
+  {
+   "id": "R31",
+   "name": "บุตร",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "ลูก, ลูกชาย",
+   "roman": "PUTRA",
+   "image": "assets/roots/R31.jpg",
+   "imgClass": "img-R31",
+   "used": []
+  },
+  {
+   "id": "R32",
+   "name": "อักษร",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "ตัวหนังสือ, ตัวอักษร",
+   "roman": "AKSARA",
+   "image": "assets/roots/R32.jpg",
+   "imgClass": "img-R32",
+   "used": []
+  },
+  {
+   "id": "R33",
+   "name": "ประเทศ",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "ถิ่น, เขต, บริเวณ, ดินแดน",
+   "roman": "PRADESA",
+   "image": "assets/roots/R33.jpg",
+   "imgClass": "img-R33",
+   "used": []
+  },
+  {
+   "id": "R34",
+   "name": "มนุษย",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "มนุษย์, คน",
+   "roman": "MANUSHYA",
+   "image": "assets/roots/R34.jpg",
+   "imgClass": "img-R34",
+   "used": []
+  },
+  {
+   "id": "R35",
+   "name": "กร",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "ผู้กระทำ, ผู้สร้าง, ผู้ทำ",
+   "roman": "KARA",
+   "image": "assets/roots/R35.jpg",
+   "imgClass": "img-R35",
+   "used": []
+  },
+  {
+   "id": "R36",
+   "name": "อาลัย",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "ที่อยู่, ที่พักพิง, ความห่วงใยผูกพัน",
+   "roman": "ALAYA",
+   "image": "assets/roots/R36.jpg",
+   "imgClass": "img-R36",
+   "used": []
+  },
+  {
+   "id": "R37",
+   "name": "อุปถัมภ์",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "ค้ำจุน, ช่วยเหลือ, เกื้อกูล, สนับสนุน",
+   "roman": "UPATHAM",
+   "image": "assets/roots/R37.jpg",
+   "imgClass": "img-R37",
+   "used": []
+  },
+  {
+   "id": "R38",
+   "name": "โอวาท",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "คำแนะนำ, คำตักเตือน, คำสั่งสอน",
+   "roman": "OVĀDA",
+   "image": "assets/roots/R38.jpg",
+   "imgClass": "img-R38",
+   "used": []
+  },
+  {
+   "id": "R39",
+   "name": "พุทธ",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "ผู้รู้, ผู้ตื่น, ผู้เบิกบาน",
+   "roman": "BUDDHA",
+   "image": "assets/roots/R39.jpg",
+   "imgClass": "img-R39",
+   "used": []
+  },
+  {
+   "id": "R40",
+   "name": "อานุภาพ",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "อำนาจ, ฤทธิ์เดช, ความสามารถที่แสดงผล",
+   "roman": "ĀNUBHĀVA",
+   "image": "assets/roots/R40.jpg",
+   "imgClass": "img-R40",
+   "used": []
+  },
+  {
+   "id": "R41",
+   "name": "หาร",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "การพรากออก, การทำลาย",
+   "roman": "HĀRA",
+   "image": "assets/roots/R41.jpg",
+   "imgClass": "img-R41",
+   "used": [
+    "สังหาร"
+   ]
+  },
+  {
+   "id": "R42",
+   "name": "อาคม",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "การมาถึง, การเข้ามา, คำสั่งสอน",
+   "roman": "ĀGAMA",
+   "image": "assets/roots/R42.jpg",
+   "imgClass": "img-R42",
+   "used": [
+    "สมาคม"
+   ]
+  },
+  {
+   "id": "R43",
+   "name": "จร",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "เที่ยวไป, เดินไป, เคลื่อนไป",
+   "roman": "CARA",
+   "image": "assets/roots/R43.jpg",
+   "imgClass": "img-R43",
+   "used": [
+    "สัญจร"
+   ]
+  },
+  {
+   "id": "R44",
+   "name": "มนสฺ",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "ใจ, จิตใจ, ความคิด",
+   "roman": "MANAS",
+   "image": "assets/roots/R44.jpg",
+   "imgClass": "img-R44",
+   "used": []
+  },
+  {
+   "id": "R45",
+   "name": "ภาพ",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "รูป, สิ่งที่ปรากฏให้เห็น",
+   "roman": "BHĀVA",
+   "image": "assets/roots/R45.jpg",
+   "imgClass": "img-R45",
+   "used": []
+  },
+  {
+   "id": "R46",
+   "name": "รมย์",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "น่ารื่นรมย์, น่ายินดี, น่าเพลิดเพลิน",
+   "roman": "RAMYA",
+   "image": "assets/roots/R46.jpg",
+   "imgClass": "img-R46",
+   "used": []
+  },
+  {
+   "id": "R47",
+   "name": "รหสฺ",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "ความลับ, ที่ลับ, ที่เร้นลับ",
+   "roman": "RAHAS",
+   "image": "assets/roots/R47.jpg",
+   "imgClass": "img-R47",
+   "used": []
+  },
+  {
+   "id": "R48",
+   "name": "ฐาน",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "ที่ตั้ง, ที่รองรับ, หลักที่มั่นคง",
+   "roman": "THĀNA",
+   "image": "assets/roots/R48.jpg",
+   "imgClass": "img-R48",
+   "used": []
+  },
+  {
+   "id": "R49",
+   "name": "ทุสฺ",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "ชั่ว, ร้าย, ไม่ดี",
+   "roman": "DUS",
+   "image": "assets/roots/R49.jpg",
+   "imgClass": "img-R49",
+   "used": [
+    "ทรชน",
+    "ทรลักษณ์",
+    "ทรยศ"
+   ]
+  },
+  {
+   "id": "R50",
+   "name": "ชน",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "คน, ผู้คน, ประชาชน",
+   "roman": "JANA",
+   "image": "assets/roots/R50.jpg",
+   "imgClass": "img-R50",
+   "used": [
+    "ทรชน"
+   ]
+  },
+  {
+   "id": "R51",
+   "name": "โทษ",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "ความผิด, ความบกพร่อง, สิ่งที่ไม่ดี",
+   "roman": "DOSA",
+   "image": "assets/roots/R51.jpg",
+   "imgClass": "img-R51",
+   "used": [
+    "นิรโทษ"
+   ]
+  },
+  {
+   "id": "R52",
+   "name": "ลักษณ์",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "ลักษณะ, เครื่องหมาย, รูปพรรณ",
+   "roman": "LAKSANA",
+   "image": "assets/roots/R52.jpg",
+   "imgClass": "img-R52",
+   "used": [
+    "ทรลักษณ์"
+   ]
+  },
+  {
+   "id": "R53",
+   "name": "ยศ",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "เกียรติยศ, ชื่อเสียง, ฐานะอันได้รับการยกย่อง",
+   "roman": "YASA",
+   "image": "assets/roots/R53.jpg",
+   "imgClass": "img-R53",
+   "used": [
+    "ทรยศ"
+   ]
+  },
+  {
+   "id": "R54",
+   "name": "ขาร",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "meaning": "การปรุงแต่ง, การประกอบขึ้น, การแปรเปลี่ยน",
+   "roman": "KHĀRA",
+   "title": "ผู้พิทักษ์แห่งการแปรเปลี่ยน",
+   "image": "assets/roots/R54.jpg",
+   "imgClass": "img-R54",
+   "used": [
+    "สังขาร"
+   ]
   }
  ],
  "completedCards": [
@@ -752,31 +1178,6 @@ window.GD = {
    "explain": "คำสนธิ (สระสนธิ): คช + อินทร์ เสียงกลมกลืนกัน อะ + อิ → อิ → คชินทร์ = ช้างที่เป็นใหญ่ พญาช้าง"
   },
   {
-   "id": "C16",
-   "name": "มหินทร์",
-   "type": "sandhi",
-   "rootNames": [
-    "มหา",
-    "อินทร์"
-   ],
-   "magic": "vowel_sandhi",
-   "effect": {
-    "name": "ราชโองการทำลาย",
-    "description": "เลือกคำสมบูรณ์ของฝ่ายตรงข้าม 1 ใบ ส่งกลับเข้า Extra Deck ของเจ้าของ (ใช้ไม่ได้ถ้าฝ่ายตรงข้ามมีคำสมบูรณ์ 3 ใบ)",
-    "op": "destroy_opponent_completed",
-    "params": {},
-    "requiresExtraQuestion": true
-   },
-   "image": null,
-   "release": "core",
-   "reviewStatus": "needs_linguistic_review",
-   "enabledForGradedPlay": false,
-   "reading": "มะ-หิน",
-   "meaning": "ผู้เป็นใหญ่ยิ่ง",
-   "change": "อา + อิ → อิ",
-   "explain": "คำสนธิ (สระสนธิ): มหา + อินทร์ เสียงกลมกลืนกัน อา + อิ → อิ → มหินทร์ = ผู้เป็นใหญ่ยิ่ง"
-  },
-  {
    "id": "C17",
    "name": "ราเมศวร",
    "type": "sandhi",
@@ -982,29 +1383,30 @@ window.GD = {
    "name": "นิรภัย",
    "type": "sandhi",
    "rootNames": [
-    "นิร",
+    "นิสฺ",
     "ภัย"
    ],
    "magic": "consonant_sandhi",
    "effect": {
-    "name": "เขตศักดิ์สิทธิ์",
-    "description": "ยกเลิกการทำลายหรือบังคับทิ้งรากศัพท์ 1 ครั้ง แล้วนำรากศัพท์จากกองทิ้ง 1 ใบขึ้นมือ — เลือกใช้เมื่อโดนความสามารถ",
-    "op": "counter_and_recover",
-    "params": {
-     "charges": 1,
-     "recover": 1
-    },
+    "name": "มหาทัณฑ์สะท้อนภัย",
+    "description": "ยกเลิกเอฟเฟคฝ่ายตรงข้ามที่มุ่งเป้ารากศัพท์ฝ่ายตน แล้วเลือกทำลายการ์ดรากศัพท์ฝ่ายตรงข้าม 1 ใบ",
+    "op": "counter_and_destroy_root",
+    "params": {},
     "requiresExtraQuestion": false,
     "timing": "reaction_when_targeted"
    },
-   "image": null,
-   "release": "expansion",
-   "reviewStatus": "needs_linguistic_review",
+   "image": "assets/extra/C24.jpg",
+   "release": "core",
+   "reviewStatus": "from_card_art",
    "enabledForGradedPlay": false,
    "reading": "นิ-ระ-ไพ",
-   "meaning": "ปราศจากภัย ปลอดภัย",
+   "meaning": "ปราศจากภัย, ปลอดภัย",
    "change": "ส → ร",
-   "explain": "คำสนธิ (พยัญชนะสนธิ): นิสฺ + ภย เสียง ส ท้ายคำหน้าเปลี่ยนเป็น ร → นิรภัย = ปราศจากภัย ปลอดภัย"
+   "explain": "คำสนธิ (พยัญชนะสนธิ): นิสฺ + ภัย เสียง ส ท้ายคำหน้าเปลี่ยนเป็น ร → นิรภัย = ปราศจากภัย, ปลอดภัย",
+   "rarity": "LEGENDARY",
+   "roman": "NIRBHAYA",
+   "imgClass": "img-C24",
+   "artName": "นิรภัย"
   },
   {
    "id": "C25",
@@ -1016,52 +1418,285 @@ window.GD = {
    ],
    "magic": "niggahit_sandhi",
    "effect": {
-    "name": "พันธสัญญาแห่งหมู่ชน",
-    "description": "นำรากศัพท์จากกองทิ้ง 1 ใบขึ้นมือ แล้วให้เพื่อนร่วมทีมดูการ์ดบนสุด 2 ใบเพื่อจัดลำดับ",
-    "op": "recover_and_reorder",
-    "params": {
-     "recover": 1,
-     "look": 2
-    },
+    "name": "พันธนาการหมู่ชน",
+    "description": "เลือกช่องวางการ์ดรากศัพท์ฝ่ายตรงข้าม 1 ช่อง ผนึกช่องนั้นจนจบเทิร์นถัดไปของฝ่ายตรงข้าม",
+    "op": "lock_slot",
+    "params": {},
     "requiresExtraQuestion": true
    },
-   "image": null,
-   "release": "expansion",
-   "reviewStatus": "needs_linguistic_review",
+   "image": "assets/extra/C25.jpg",
+   "release": "core",
+   "reviewStatus": "from_card_art",
    "enabledForGradedPlay": false,
    "reading": "สัง-คม",
-   "meaning": "การไปร่วมกัน หมู่คน",
+   "meaning": "การไปร่วมกัน, หมู่คน",
    "change": "นิคหิต → ง",
-   "explain": "คำสนธิ (นิคหิตสนธิ): สํ + คม เสียงกลมกลืนกัน นิคหิต → ง → สังคม = การไปร่วมกัน หมู่คน"
+   "explain": "คำสนธิ (นิคหิตสนธิ): สํ + คม นิคหิตท้ายคำหน้าเปลี่ยนเป็น ง ตามเสียงที่ตามมา → สังคม = การไปร่วมกัน, หมู่คน",
+   "rarity": "COMMON",
+   "roman": "SANGKHOM",
+   "imgClass": "img-C25",
+   "artName": "สังคม"
   },
   {
    "id": "C26",
-   "name": "ภูมินทร์",
+   "name": "สมุทัย",
    "type": "sandhi",
    "rootNames": [
-    "ภูมิ",
-    "อินทร์"
+    "สํ",
+    "อุทัย"
    ],
-   "magic": "vowel_sandhi",
+   "magic": "niggahit_sandhi",
+   "rarity": "EPIC",
+   "roman": "SAMUTHAI",
    "effect": {
-    "name": "ปิดทางแผ่นดิน",
-    "description": "ล็อกช่องรากศัพท์ว่างของฝ่ายตรงข้าม 1 ช่อง ตลอดเทิร์นถัดไปของฝ่ายตรงข้าม (ล็อกติดกันสองเทิร์นไม่ได้)",
-    "op": "lock_opponent_fusion_slot",
-    "params": {
-     "turns": 1
-    },
+    "name": "ผนึกต้นกำเนิด",
+    "description": "เลือกช่องวางรากศัพท์ฝ่ายตรงข้าม 1 ช่อง ผนึกช่องนั้นจนจบเทิร์นถัดไปของฝ่ายตรงข้าม",
+    "op": "lock_slot",
+    "params": {},
     "requiresExtraQuestion": true
    },
-   "image": null,
-   "imgClass": null,
+   "image": "assets/extra/C26.jpg",
+   "imgClass": "img-C26",
    "release": "core",
-   "reviewStatus": "needs_linguistic_review",
+   "reviewStatus": "from_card_art",
    "enabledForGradedPlay": false,
-   "note": "การ์ดใหม่ (เพิ่ม 2026-11-14) — ครูตรวจชื่อคำ/สูตร/ชนิดสนธิ",
-   "reading": "พู-มิน",
-   "meaning": "ผู้เป็นใหญ่แห่งแผ่นดิน พระราชา",
-   "change": "อิ + อิ → อิ",
-   "explain": "คำสนธิ (สระสนธิ): ภูมิ + อินทร์ เสียงกลมกลืนกัน อิ + อิ → อิ → ภูมินทร์ = ผู้เป็นใหญ่แห่งแผ่นดิน พระราชา"
+   "artName": "สมุทัย",
+   "reading": "สะ-มุ-ไท",
+   "meaning": "เหตุให้เกิด, ต้นเหตุ",
+   "change": "นิคหิต → ม",
+   "explain": "คำสนธิ (นิคหิตสนธิ): สํ + อุทัย นิคหิตท้ายคำหน้าเปลี่ยนเป็น ม ตามเสียงที่ตามมา → สมุทัย = เหตุให้เกิด, ต้นเหตุ"
+  },
+  {
+   "id": "C27",
+   "name": "สังขาร",
+   "type": "sandhi",
+   "rootNames": [
+    "สํ",
+    "ขาร"
+   ],
+   "magic": "niggahit_sandhi",
+   "rarity": "EPIC",
+   "roman": "SANGKHAN",
+   "effect": {
+    "name": "วัฏจักรแห่งพันธนาการ",
+    "description": "ผนึกช่องรากศัพท์ที่ว่างของฝ่ายตรงข้าม 1 ช่องจนจบเทิร์นถัดไป จากนั้นย้ายตราผนึกไปยังช่องว่างอีกช่องหนึ่งเป็นเวลาอีก 1 เทิร์น",
+    "op": "lock_then_move",
+    "params": {},
+    "requiresExtraQuestion": true
+   },
+   "image": "assets/extra/C27.jpg",
+   "imgClass": "img-C27",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "enabledForGradedPlay": false,
+   "artName": "สังขาร",
+   "reading": "สัง-ขาน",
+   "meaning": "สิ่งที่ปรุงแต่งขึ้น, ร่างกาย",
+   "change": "นิคหิต → ง",
+   "explain": "คำสนธิ (นิคหิตสนธิ): สํ + ขาร นิคหิตท้ายคำหน้าเปลี่ยนเป็น ง ตามเสียงที่ตามมา → สังขาร = สิ่งที่ปรุงแต่งขึ้น, ร่างกาย"
+  },
+  {
+   "id": "C28",
+   "name": "สัญจร",
+   "type": "sandhi",
+   "rootNames": [
+    "สํ",
+    "จร"
+   ],
+   "magic": "niggahit_sandhi",
+   "rarity": "RARE",
+   "roman": "SANJON",
+   "effect": {
+    "name": "เส้นทางต้องห้าม",
+    "description": "ผนึกช่องรากศัพท์ที่ว่างของฝ่ายตรงข้าม 1 ช่องจนจบเทิร์นถัดไป และห้ามย้ายหรือสลับการ์ดเข้าช่องนั้น",
+    "op": "lock_empty_slot",
+    "params": {},
+    "requiresExtraQuestion": true
+   },
+   "image": "assets/extra/C28.jpg",
+   "imgClass": "img-C28",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "enabledForGradedPlay": false,
+   "artName": "สัญจร",
+   "reading": "สัน-จอน",
+   "meaning": "การเดินทางไปมา",
+   "change": "นิคหิต → ญ",
+   "explain": "คำสนธิ (นิคหิตสนธิ): สํ + จร นิคหิตท้ายคำหน้าเปลี่ยนเป็น ญ ตามเสียงที่ตามมา → สัญจร = การเดินทางไปมา"
+  },
+  {
+   "id": "C29",
+   "name": "สมาคม",
+   "type": "sandhi",
+   "rootNames": [
+    "สํ",
+    "อาคม"
+   ],
+   "magic": "niggahit_sandhi",
+   "rarity": "RARE",
+   "roman": "SAMAKHOM",
+   "effect": {
+    "name": "วงล้อมพิทักษ์พันธนาการ",
+    "description": "เลือกช่องรากศัพท์ฝ่ายตรงข้าม 1 ช่อง หากว่างให้ผนึกจนจบเทิร์นถัดไป หากมีการ์ดอยู่ให้ติดตราและผนึกช่องนั้นเมื่อการ์ดออกจากช่อง",
+    "op": "lock_or_brand",
+    "params": {},
+    "requiresExtraQuestion": true
+   },
+   "image": "assets/extra/C29.jpg",
+   "imgClass": "img-C29",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "enabledForGradedPlay": false,
+   "artName": "สมาคม",
+   "reading": "สะ-มา-คม",
+   "meaning": "การมาร่วมกัน, กลุ่มคนที่รวมกัน",
+   "change": "นิคหิต → ม",
+   "explain": "คำสนธิ (นิคหิตสนธิ): สํ + อาคม นิคหิตท้ายคำหน้าเปลี่ยนเป็น ม ตามเสียงที่ตามมา → สมาคม = การมาร่วมกัน, กลุ่มคนที่รวมกัน"
+  },
+  {
+   "id": "C30",
+   "name": "สังหาร",
+   "type": "sandhi",
+   "rootNames": [
+    "สํ",
+    "หาร"
+   ],
+   "magic": "niggahit_sandhi",
+   "rarity": "LEGENDARY",
+   "roman": "SANGHAN",
+   "effect": {
+    "name": "มหาผนึกพิฆาต",
+    "description": "ผนึกช่องวางการ์ดรากศัพท์ทั้ง 2 ช่องของฝ่ายตรงข้ามจนจบเทิร์นถัดไปของฝ่ายตรงข้าม",
+    "op": "lock_both_slots",
+    "params": {},
+    "requiresExtraQuestion": true
+   },
+   "image": "assets/extra/C30.jpg",
+   "imgClass": "img-C30",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "enabledForGradedPlay": false,
+   "artName": "สังหาร",
+   "reading": "สัง-หาน",
+   "meaning": "การฆ่า, การทำลาย",
+   "change": "นิคหิต → ง",
+   "explain": "คำสนธิ (นิคหิตสนธิ): สํ + หาร นิคหิตท้ายคำหน้าเปลี่ยนเป็น ง ตามเสียงที่ตามมา → สังหาร = การฆ่า, การทำลาย"
+  },
+  {
+   "id": "C31",
+   "name": "ทรชน",
+   "type": "sandhi",
+   "rootNames": [
+    "ทุสฺ",
+    "ชน"
+   ],
+   "magic": "consonant_sandhi",
+   "rarity": "LEGENDARY",
+   "roman": "THORRACHON",
+   "effect": {
+    "name": "มหาทัณฑ์ล้างพิภพ",
+    "description": "เลือกทำลายการ์ดคำสมบูรณ์ฝ่ายตรงข้าม 1 ใบ และส่งลงกองทิ้งทันที",
+    "op": "destroy_completed_permanent",
+    "params": {},
+    "requiresExtraQuestion": true
+   },
+   "image": "assets/extra/C31.jpg",
+   "imgClass": "img-C31",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "enabledForGradedPlay": false,
+   "artName": "ทรชน",
+   "reading": "ทอ-ระ-ชน",
+   "meaning": "คนชั่ว คนร้าย",
+   "change": "ส → ร",
+   "explain": "คำสนธิ (พยัญชนะสนธิ): ทุสฺ + ชน เสียง ส ท้ายคำหน้าเปลี่ยนเป็น ร → ทรชน = คนชั่ว คนร้าย"
+  },
+  {
+   "id": "C32",
+   "name": "นิรโทษ",
+   "type": "sandhi",
+   "rootNames": [
+    "นิสฺ",
+    "โทษ"
+   ],
+   "magic": "consonant_sandhi",
+   "rarity": "RARE",
+   "roman": "NIRDOSA",
+   "effect": {
+    "name": "พิพากษาไร้ปรานี",
+    "description": "สุ่มทำลายการ์ดรากศัพท์ฝ่ายตรงข้าม 1 ใบ หากฝ่ายตรงข้ามมีรากศัพท์อยู่ครบ 2 ช่องก่อนถูกทำลาย ให้จั่วการ์ด 1 ใบ",
+    "op": "random_destroy_staged_draw",
+    "params": {},
+    "requiresExtraQuestion": true
+   },
+   "image": "assets/extra/C32.jpg",
+   "imgClass": "img-C32",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "enabledForGradedPlay": false,
+   "artName": "นิรโทษ",
+   "reading": "นิ-ระ-โทด",
+   "meaning": "ปราศจากโทษ, การยกโทษ",
+   "change": "ส → ร",
+   "explain": "คำสนธิ (พยัญชนะสนธิ): นิสฺ + โทษ เสียง ส ท้ายคำหน้าเปลี่ยนเป็น ร → นิรโทษ = ปราศจากโทษ, การยกโทษ"
+  },
+  {
+   "id": "C33",
+   "name": "ทรลักษณ์",
+   "type": "sandhi",
+   "rootNames": [
+    "ทุสฺ",
+    "ลักษณ์"
+   ],
+   "magic": "consonant_sandhi",
+   "rarity": "RARE",
+   "roman": "THORRALAK",
+   "effect": {
+    "name": "ตรามรณะ",
+    "description": "เลือกการ์ดรากศัพท์ฝ่ายตรงข้าม 1 ใบเพื่อติดตรามรณะ หากฝ่ายตรงข้ามวางรากศัพท์อีกใบ ให้ทำลายการ์ดที่ติดตรา ตราหมดอายุเมื่อจบเทิร์นถัดไปของฝ่ายตรงข้าม",
+    "op": "death_mark",
+    "params": {},
+    "requiresExtraQuestion": true
+   },
+   "image": "assets/extra/C33.jpg",
+   "imgClass": "img-C33",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "enabledForGradedPlay": false,
+   "artName": "ทรลักษณ์",
+   "reading": "ทอ-ระ-ลัก",
+   "meaning": "ลักษณะไม่ดี, รูปร่างอัปลักษณ์",
+   "change": "ส → ร",
+   "explain": "คำสนธิ (พยัญชนะสนธิ): ทุสฺ + ลักษณ์ เสียง ส ท้ายคำหน้าเปลี่ยนเป็น ร → ทรลักษณ์ = ลักษณะไม่ดี, รูปร่างอัปลักษณ์"
+  },
+  {
+   "id": "C34",
+   "name": "ทรยศ",
+   "type": "sandhi",
+   "rootNames": [
+    "ทุสฺ",
+    "ยศ"
+   ],
+   "magic": "consonant_sandhi",
+   "rarity": "EPIC",
+   "roman": "THORRAYOT",
+   "effect": {
+    "name": "ราชทัณฑ์เนรเทศ",
+    "description": "เลือกการ์ดคำสมบูรณ์ฝ่ายตรงข้าม 1 ใบ ส่งกลับเข้า Extra Deck ของฝ่ายตรงข้ามทันที",
+    "op": "destroy_opponent_completed",
+    "params": {},
+    "requiresExtraQuestion": true
+   },
+   "image": "assets/extra/C34.jpg",
+   "imgClass": "img-C34",
+   "release": "core",
+   "reviewStatus": "from_card_art",
+   "enabledForGradedPlay": false,
+   "artName": "ทรยศ",
+   "reading": "ทอ-ระ-ยด",
+   "meaning": "คิดร้ายต่อผู้มีคุณ, ไม่ซื่อสัตย์",
+   "change": "ส → ร",
+   "explain": "คำสนธิ (พยัญชนะสนธิ): ทุสฺ + ยศ เสียง ส ท้ายคำหน้าเปลี่ยนเป็น ร → ทรยศ = คิดร้ายต่อผู้มีคุณ, ไม่ซื่อสัตย์"
   }
  ],
  "magicCards": [

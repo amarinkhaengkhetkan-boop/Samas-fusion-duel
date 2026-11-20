@@ -165,11 +165,11 @@ function showGlossary(){
   if(glossTab === 'roots'){
     const list = GD.roots.filter(r => !q || r.name.includes(q) || r.meaning.includes(q));
     body = `<div class="glist roots">${list.map(r => `<div class="gitem"><div class="card">${rootFaceHTML(r.name)}</div><div><div class="gname">${esc(r.name)}</div><div>${esc(r.meaning)}</div>
-      <div class="zhint">ใช้ใน: ${esc(GD.completedCards.filter(c => c.rootNames.includes(r.name)).map(c => c.name).join(', ') || '-')}</div>${r.release==='expansion'?'<span class="pill exp">ส่วนขยาย</span>':''}</div></div>`).join('')}</div>`;
+      ${r.title?`<div class="zhint">“${esc(r.title)}”</div>`:''}<div class="zhint">ใช้ใน: ${esc(GD.completedCards.filter(c => c.rootNames.includes(r.name)).map(c => c.name).join(', ') || 'ยังไม่มีคำในเกม (รอการ์ดคำสมบูรณ์)')}</div>${r.release==='expansion'?'<span class="pill exp">ส่วนขยาย</span>':''}</div></div>`).join('')}</div>`;
   } else {
     const list = GD.completedCards.filter(c => (glossTab === 'all' || TYPE_KEY(c) === glossTab) && (!q || c.name.includes(q) || (c.meaning||'').includes(q) || c.rootNames.join('').includes(q)));
     body = `<div class="glist">${list.map(c => `<div class="gitem"><div class="card">${compFaceHTML(c)}</div><div>
-      <div class="gname">${esc(c.name)} <span class="pill ${c.type}">${c.type==='samas'?'คำสมาส':magicName(c.magic)}</span>${c.release==='expansion'?'<span class="pill exp">ส่วนขยาย</span>':''}</div>
+      <div class="gname">${esc(c.name)} <span class="pill ${c.type}">${c.type==='samas'?'คำสมาส':magicName(c.magic)}</span>${c.rarity?`<span class="pill rar ${c.rarity}">${c.rarity}</span>`:''}${c.release==='expansion'?'<span class="pill exp">ส่วนขยาย</span>':''}</div>
       <div class="zhint">อ่านว่า <b>${esc(c.reading || '-')}</b></div>
       <div>${esc(c.rootNames.map(n => `${n} (${ROOT[n] ? ROOT[n].meaning : ''})`).join(' + '))}${c.magic?' + เวท'+esc(magicName(c.magic)):''}</div>
       <div class="dex">💡 ${esc(cExplain(c))}</div>

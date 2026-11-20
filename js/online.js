@@ -6,7 +6,7 @@
      · private/A, B    = การ์ดในมือของแต่ละทีม (กฎฐานข้อมูลให้อ่านได้เฉพาะเจ้าของที่นั่ง + โฮสต์)
    - ผู้เล่นส่งคำสั่งเข้า actions/ แล้วโฮสต์เป็นผู้ตรวจและดำเนินการ
    ===================================================================== */
-const APP_VER = '20261120a';
+const APP_VER = '20261120b';
 let AUTH = null, DB = null, USER = null;
 let ROOM = null, ROOM_PW = '', IS_HOST = false, MYSEAT = null, ROOMINFO = null;
 let TEAMS = {}, READY = {}, NAMES = {};
@@ -376,7 +376,7 @@ function ctlHTML(){
 /* ---------- โฮสต์: ส่งสถานะ / รับคำสั่ง ---------- */
 function snapshot(){
   if(!state) return {none:true};
-  const T = t => ({ n:t.name, h:t.hand.map(c=>[c.uid,c.name,c.revealedUntil?1:0]), f:t.fusionZone.map(c=>c?[c.uid,c.name]:null), lk:[0,1].map(i=>isLocked(t,i)?1:0),
+  const T = t => ({ n:t.name, h:t.hand.map(c=>[c.uid,c.name,c.revealedUntil?1:0]), f:t.fusionZone.map(c=>c?[c.uid,c.name]:null), lk:[0,1].map(i=>isLocked(t,i)?1:0), mk:t.mark&&t.mark.to>=state.turnNo?t.mark.uid:null, br:[0,1].map(i=>t.brands&&t.brands[i]?1:0),
     s:t.sandhiSlot?(t.sandhiSlot.mtype||'vowel_sandhi'):0, c:t.completedZone.map(x=>x?x.cid:null), cu:t.completedZone.map(x=>x&&x.used?1:0), x:t.extraDeck.length, xc:t.extraDeck.map(x=>x.cid), m:t.mainDeck.length,
     d:t.discard.length, dt:t.discard.length?t.discard[t.discard.length-1].name:null, df:t.defenses.map(d=>DEF_LABEL[d.kind]) });
   return { turn:state.turn, turnNo:state.turnNo, round:state.round, phase:state.phase, hd:state.hasDrawn?1:0, sm:state.summoned||state.summonLost?1:0,
@@ -500,7 +500,7 @@ function renderPhone(){
     <div class="ph-xrow"><div class="card pile click" data-m="xopp" style="--cw:40px">${backFaceHTML('X')}<span class="count">${o.x}</span></div><span class="zhint">Extra Deck ${OK} · แตะเพื่อดูคำที่ยังอัญเชิญได้</span></div>
     <div class="ph-backs">${o.h.map(c=> c[2] ? `<div class="card" style="--cw:30px">${rootFaceHTML(c[1])}<span class="tag">👁</span></div>` : `<div class="card" style="--cw:30px">${backFaceHTML(OK)}</div>`).join('')}<span class="zhint">มือ ${o.h.length}${revealed.length?` · เปิดเผย ${revealed.map(c=>esc(c[1])).join(', ')}`:''}</span></div>
     <div class="ph-lbl">คำสมบูรณ์ ${OK}</div><div class="ph-row cmp">${smallComp(o.c, o.cu)}</div>
-    <div class="ph-lbl">รากศัพท์ที่วางเตรียม ${OK}</div><div class="ph-row fus">${o.f.map((c,i)=> c ? `<div class="card click" data-m="zr:${esc(c[1])}">${rootFaceHTML(c[1])}</div>` : (o.lk&&o.lk[i] ? `<div class="slot locked">🔒</div>` : `<div class="slot">ว่าง</div>`)).join('')}${o.s?`<div class="card mcard">${magicFaceHTML(o.s)}</div>`:''}</div>
+    <div class="ph-lbl">รากศัพท์ที่วางเตรียม ${OK}</div><div class="ph-row fus">${o.f.map((c,i)=> c ? `<div class="card click" data-m="zr:${esc(c[1])}">${rootFaceHTML(c[1])}${o.mk===c[0]?'<span class="tag skull">☠</span>':''}${o.br&&o.br[i]?'<span class="tag brand">🔗</span>':''}${o.lk&&o.lk[i]?'<span class="lockbadge">🔒</span>':''}</div>` : (o.lk&&o.lk[i] ? `<div class="slot locked">🔒</div>` : `<div class="slot">ว่าง</div>`)).join('')}${o.s?`<div class="card mcard">${magicFaceHTML(o.s)}</div>`:''}</div>
     ${o.df.length?`<div class="zhint">${o.df.join(' ')}</div>`:''}
   </section>`;
   html += `<div class="ph-mid"><div class="phases">${PHASES.map(([k,l])=>`<span class="${S.phase===k?'on':''}">${l}</span>`).join('')}</div>
@@ -511,7 +511,7 @@ function renderPhone(){
       return `<figure>${n ? `<div class="card pile ${can?'click':''}" ${can?`data-m="cast:${mt}"`:''}>${magicFaceHTML(mt)}<span class="count">${n}</span></div>` : `<div class="slot mslot">ว่าง</div>`}<figcaption>${esc(magicName(mt))}</figcaption></figure>`; }).join('')}</div></div>`;
   html += `<section class="ph-side me ${ME}">
     <div class="ph-lbl">รากศัพท์ที่วางเตรียม (แตะเพื่อคืนขึ้นมือ)</div>
-    <div class="ph-row fus big">${me.f.map((c,i)=> c ? `<div class="card ${me.f.every(Boolean)?'linked':''}" data-m="un${i}" data-zr="${esc(c[1])}">${rootFaceHTML(c[1])}</div>` : (me.lk&&me.lk[i] ? `<div class="slot locked">🔒<br>ล็อก</div>` : `<div class="slot ${phoneSel?'target':''}" data-m="pl${i}">ช่อง ${i+1}</div>`)).join('')}
+    <div class="ph-row fus big">${me.f.map((c,i)=> c ? `<div class="card ${me.f.every(Boolean)?'linked':''}" data-m="un${i}" data-zr="${esc(c[1])}">${rootFaceHTML(c[1])}${me.mk===c[0]?'<span class="tag skull">☠</span>':''}${me.br&&me.br[i]?'<span class="tag brand">🔗</span>':''}${me.lk&&me.lk[i]?'<span class="lockbadge">🔒</span>':''}</div>` : (me.lk&&me.lk[i] ? `<div class="slot locked">🔒<br>ล็อก</div>` : `<div class="slot ${phoneSel?'target':''}" data-m="pl${i}">ช่อง ${i+1}</div>`)).join('')}
       ${me.s ? `<div class="card mcard" data-m="uncast">${magicFaceHTML(me.s)}</div>` : `<div class="slot mslot" data-m="castmenu">แตะเพื่อ<br>ร่ายเวท<br>สนธิ</div>`}</div>
     <div class="ph-lbl">Extra Deck ${ME} และคำสมบูรณ์ของเรา ★ ${me.c.filter(Boolean).length}/4</div>
     <div class="ph-row cmp"><div class="card pile click xpile" data-m="xme">${backFaceHTML('X')}<span class="count">${me.x}</span></div>${smallComp(me.c, me.cu)}</div>
